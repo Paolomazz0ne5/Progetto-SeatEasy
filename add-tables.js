@@ -1,0 +1,11 @@
+const db = require('better-sqlite3')('database.db');
+db.exec("INSERT INTO Tavolo (idSala, numero, posti, stato) VALUES (1, 2, 2, 'Libero');");
+db.exec("INSERT INTO Tavolo (idSala, numero, posti, stato) VALUES (1, 3, 2, 'Occupato');");
+db.exec("INSERT INTO Tavolo (idSala, numero, posti, stato) VALUES (1, 4, 6, 'Libero');");
+db.exec("INSERT INTO Tavolo (idSala, numero, posti, stato) VALUES (1, 5, 4, 'Occupato');");
+db.exec("INSERT INTO Tavolo (idSala, numero, posti, stato) VALUES (1, 6, 8, 'Libero');");
+db.exec("INSERT INTO Tavolo (idSala, numero, posti, stato) VALUES (1, 7, 2, 'Non Disponibile');");
+db.exec("INSERT INTO Tavolo (idSala, numero, posti, stato) VALUES (1, 8, 4, 'Libero');");
+db.exec("INSERT INTO Tavolo (idSala, numero, posti, stato) VALUES (1, 9, 2, 'Libero');");
+db.exec("INSERT INTO Tavolo (idSala, numero, posti, stato) VALUES (1, 10, 4, 'Libero');");
+console.log('Tavoli aggiunti.');

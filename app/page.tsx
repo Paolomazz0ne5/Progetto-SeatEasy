@@ -1,65 +1,85 @@
-import Image from "next/image";
+import Database from 'better-sqlite3';
+import path from 'path';
+import Link from 'next/link';
+import Navbar from '@/components/Navbar';
+import Hero from '@/components/Hero';
+
+const dbPath = path.resolve(process.cwd(), 'database.db');
+const db = new Database(dbPath);
 
 export default function Home() {
+  const ristoranti = db.prepare('SELECT * FROM Ristorante').all();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="min-h-screen bg-[#FFFDFB] font-sans">
+      <Navbar />
+      <main>
+        <Hero />
+        
+        {/* Ristoranti in Evidenza */}
+        <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-extrabold tracking-tight text-[#781D2D] sm:text-4xl">
+              Ristoranti in Evidenza
+            </h2>
+            <p className="mt-4 max-w-2xl text-lg text-[#781D2D]/70 mx-auto">
+              Scegli tra i nostri partner esclusivi e prenota un tavolo in anteprima.
+            </p>
+          </div>
+
+          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {ristoranti.map((risto: any) => (
+              <div 
+                key={risto.idRistorante} 
+                className="bg-white rounded-2xl shadow-sm border border-[#F5CBA7]/40 overflow-hidden hover:shadow-xl transition-shadow duration-300 group flex flex-col"
+              >
+                <div className="h-48 bg-[#FDF1E9] relative flex items-center justify-center overflow-hidden">
+                  <img 
+                    src={`https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80`}
+                    alt={risto.nome}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                  <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-[#E74C3C] shadow-sm">
+                    Nuovo
+                  </div>
+                </div>
+                <div className="p-6 flex-1 flex flex-col">
+                  <h3 className="text-xl font-bold text-[#781D2D] mb-2">{risto.nome}</h3>
+                  <div className="flex items-start space-x-2 text-gray-500 mb-6 flex-1">
+                    <svg className="w-5 h-5 text-[#D35400] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <p className="text-sm font-medium leading-relaxed">{risto.indirizzo}</p>
+                  </div>
+                  <Link href={`/ristorante/${risto.idRistorante}`} className="inline-flex justify-center items-center w-full py-2.5 px-4 border-2 border-[#781D2D]/20 text-[#781D2D] rounded-xl font-bold hover:bg-[#781D2D] hover:border-[#781D2D] hover:text-white transition-all">
+                    Prenota Ora
+                  </Link>
+                </div>
+              </div>
+            ))}
+            
+            {/* Fallback if no restaurants exist */}
+            {ristoranti.length === 0 && (
+              <div className="col-span-full text-center py-12 text-[#781D2D]/60 bg-[#FDF1E9]/50 rounded-2xl border border-dashed border-[#F5CBA7]">
+                 Nessun ristorante disponibile al momento.
+              </div>
+            )}
+          </div>
+        </section>
+      </main>
+      
+      {/* Footer */}
+      <footer className="bg-[#781D2D] text-[#F5CBA7] py-8 border-t-4 border-[#D35400]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
+           <div className="mb-4">
+             <span className="text-2xl font-extrabold tracking-tight text-white leading-none">SeatEasy</span>
+           </div>
+          <p className="text-[#F5CBA7]/80 font-medium text-sm">
+            &copy; {new Date().getFullYear()} SeatEasy - Restaurant Management System. Tutti i diritti riservati.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </footer>
     </div>
   );
 }
