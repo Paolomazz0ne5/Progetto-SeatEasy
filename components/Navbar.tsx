@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import React, { useState } from "react";
+import Logo from "@/components/Logo";
 
 export default function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -12,12 +13,7 @@ export default function Navbar() {
         <div className="flex justify-between h-20 items-center">
           {/* Logo Section */}
           <Link href="/" className="flex items-center space-x-2">
-            <img 
-              src="/logo.png" 
-              alt="SeatEasy Logo" 
-              className="object-contain" 
-              style={{ maxHeight: '60px' }} 
-            />
+            <Logo className="scale-[0.8] origin-left" />
           </Link>
 
           {/* Right Actions */}
