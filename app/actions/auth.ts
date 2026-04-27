@@ -12,7 +12,8 @@ function getDb() {
 
 export async function loginAction(formData: FormData) {
   const email = formData.get('email') as string;
-  const password = formData.get('password') as string; // in a real app, hash and compare
+  const password = formData.get('password') as string;
+  const role = formData.get('role') as string; // 'cliente' or 'gestore'
   
   if (!email || !password) {
     return { success: false, error: 'Compila tutti i campi' };
@@ -26,18 +27,26 @@ export async function loginAction(formData: FormData) {
       return { success: false, error: 'Credenziali non valide o utente inesistente.' };
     }
 
-    // Verify if user is actually a Gestore
-    const gestore = db.prepare('SELECT idAccount FROM GestoreRistorante WHERE idAccount = ?').get(user.idAccount);
-    if (!gestore) {
-      return { success: false, error: 'Questo account non ha i permessi di Area Gestore.' };
+    if (role === 'gestore') {
+      const gestore = db.prepare('SELECT idAccount FROM GestoreRistorante WHERE idAccount = ?').get(user.idAccount);
+      if (!gestore) {
+        return { success: false, error: 'Questo account non ha i permessi di Area Gestore.' };
+      }
+    } else {
+      const cliente = db.prepare('SELECT idAccount FROM Cliente WHERE idAccount = ?').get(user.idAccount);
+      if (!cliente) {
+        return { success: false, error: 'Questo account non è registrato come Cliente.' };
+      }
     }
 
     const cookieStore = await cookies();
     cookieStore.set('seateasy_session', String(user.idAccount), { 
       path: '/',
       httpOnly: true,
-      maxAge: 86400 * 7 // 7 days
+      maxAge: 86400 * 7
     });
+
+    return { success: true, role };
 
   } catch (error) {
     console.error(error);
@@ -45,9 +54,6 @@ export async function loginAction(formData: FormData) {
   } finally {
     db.close();
   }
-
-  // Redirect should be outside try-catch to avoid interception
-  redirect('/gestore/dashboard');
 }
 
 export async function registerAction(formData: FormData) {
@@ -55,6 +61,9 @@ export async function registerAction(formData: FormData) {
   const cognome = formData.get('cognome') as string;
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
+  const telefono = formData.get('telefono') as string;
+  const role = formData.get('role') as string;
+  const pin = formData.get('pin') as string;
 
   if (!email || !password || !nome || !cognome) {
     return { success: false, error: 'Compila tutti i campi richiesti.' };
@@ -68,11 +77,14 @@ export async function registerAction(formData: FormData) {
     }
 
     const transaction = db.transaction(() => {
-      const res = db.prepare('INSERT INTO Account (email, password, nome, cognome) VALUES (?, ?, ?, ?)').run(email, password, nome, cognome);
+      const res = db.prepare('INSERT INTO Account (email, password, nome, cognome, telefono) VALUES (?, ?, ?, ?, ?)').run(email, password, nome, cognome, telefono);
       const newId = res.lastInsertRowid;
       
-      // Auto-assign Gestore role
-      db.prepare('INSERT INTO GestoreRistorante (idAccount, ruolo, PIN) VALUES (?, ?, ?)').run(newId, 'Manager', '0000');
+      if (role === 'gestore') {
+        db.prepare('INSERT INTO GestoreRistorante (idAccount, ruolo, PIN) VALUES (?, ?, ?)').run(newId, 'Manager', pin || '0000');
+      } else {
+        db.prepare('INSERT INTO Cliente (idAccount) VALUES (?)').run(newId);
+      }
       
       return newId;
     });
@@ -86,18 +98,20 @@ export async function registerAction(formData: FormData) {
       maxAge: 86400 * 7
     });
 
+    return { success: true, role };
+
   } catch (error: any) {
     console.error(error);
     return { success: false, error: 'Errore inaspettato durante la registrazione.' };
   } finally {
     db.close();
   }
-
-  redirect('/gestore/dashboard');
 }
+
 
 export async function logoutAction() {
   const cookieStore = await cookies();
   cookieStore.delete('seateasy_session');
-  redirect('/auth/login');
+  redirect('/auth');
 }
+

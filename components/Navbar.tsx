@@ -1,11 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Logo from "@/components/Logo";
+import { logoutAction } from "@/app/actions/auth";
 
-export default function Navbar() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+export default function Navbar({ isLoggedIn: initialIsLoggedIn = false }: { isLoggedIn?: boolean }) {
+  const [isLoggedIn, setIsLoggedIn] = useState(initialIsLoggedIn);
+
+  useEffect(() => {
+    setIsLoggedIn(initialIsLoggedIn);
+  }, [initialIsLoggedIn]);
+
+  const handleLogout = async () => {
+    await logoutAction();
+  };
 
   return (
     <nav className="fixed top-0 w-full z-50 bg-[#F5CBA7] shadow-md border-b border-[#e2b793]">
@@ -20,30 +29,32 @@ export default function Navbar() {
           <div className="flex items-center space-x-6">
             {!isLoggedIn ? (
               <>
-                <button 
-                  onClick={() => setIsLoggedIn(true)}
+                <Link 
+                  href="/auth"
                   className="font-medium text-[#781D2D] hover:text-[#5f1723] transition-colors"
                 >
                   Login
-                </button>
-                <button 
+                </Link>
+                <Link 
+                  href="/auth"
                   className="bg-[#781D2D] text-white px-5 py-2 rounded-full font-medium hover:bg-[#5f1723] transition-colors shadow-sm"
                 >
                   Create Account
-                </button>
+                </Link>
               </>
+
             ) : (
               <>
                 <button 
-                  onClick={() => setIsLoggedIn(false)}
+                  onClick={handleLogout}
                   className="font-medium text-[#781D2D] hover:text-[#5f1723] transition-colors"
                 >
                   Logout
                 </button>
                 <Link 
-                  href="/profile" 
+                  href="/gestore/dashboard" 
                   className="p-2 rounded-full bg-white/40 hover:bg-white/60 transition-colors text-[#781D2D] relative group"
-                  title="Profile & Bookings"
+                  title="Profile & Dashboard"
                 >
                   {/* Profile / History Icon */}
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -61,3 +72,4 @@ export default function Navbar() {
     </nav>
   );
 }
+

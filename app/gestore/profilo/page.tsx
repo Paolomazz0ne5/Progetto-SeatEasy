@@ -12,8 +12,9 @@ export default async function ProfiloPage() {
   const session = cookieStore.get('seateasy_session');
   
   if (!session) {
-    redirect('/auth/login');
+    redirect('/auth');
   }
+
 
   const userId = Number(session.value);
 
@@ -25,8 +26,9 @@ export default async function ProfiloPage() {
   db.close();
 
   if (!user) {
-    redirect('/auth/login');
+    redirect('/auth');
   }
+
 
   return (
     <>

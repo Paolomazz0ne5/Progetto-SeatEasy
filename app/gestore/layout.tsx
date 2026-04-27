@@ -15,8 +15,9 @@ export default async function GestoreLayout({
 
   // If there's no auth cookie, bump the user out to the public login page
   if (!sessionValid) {
-    redirect('/auth/login');
+    redirect('/auth');
   }
+
 
   // If authenticated, render the globally authenticated dashboard layout
   // We use a flex container: Sidebar on the left, Main Content on the right.

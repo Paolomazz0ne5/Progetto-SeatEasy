@@ -1,18 +1,23 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
 
 const dbPath = path.resolve(process.cwd(), 'database.db');
 const db = new Database(dbPath);
 
-export default function Home() {
+export default async function Home() {
+  const cookieStore = await cookies();
+  const isLoggedIn = cookieStore.has('seateasy_session');
+  
   const ristoranti = db.prepare('SELECT * FROM Ristorante').all();
 
   return (
     <div className="min-h-screen bg-[#FFFDFB] font-sans">
-      <Navbar />
+      <Navbar isLoggedIn={isLoggedIn} />
+
       <main>
         <Hero />
         

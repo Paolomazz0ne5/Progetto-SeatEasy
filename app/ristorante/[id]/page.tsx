@@ -1,11 +1,14 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import Navbar from '@/components/Navbar';
 import TableMap from '@/components/TableMap';
 
 export default async function RistoranteDettaglio({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const cookieStore = await cookies();
+  const isLoggedIn = cookieStore.has('seateasy_session');
   
   const dbPath = path.resolve(process.cwd(), 'database.db');
   const db = new Database(dbPath);
@@ -15,7 +18,8 @@ export default async function RistoranteDettaglio({ params }: { params: Promise<
   if (!ristorante) {
     return (
       <div className="min-h-screen bg-[#FFFDFB] font-sans flex flex-col pt-20">
-        <Navbar />
+        <Navbar isLoggedIn={isLoggedIn} />
+
         <div className="flex-1 flex items-center justify-center">
           <h1 className="text-2xl font-bold text-[#781D2D]">Ristorante non trovato</h1>
         </div>
@@ -35,7 +39,7 @@ export default async function RistoranteDettaglio({ params }: { params: Promise<
 
   return (
     <div className="min-h-screen bg-[#FFFDFB] font-sans flex flex-col">
-      <Navbar />
+      <Navbar isLoggedIn={isLoggedIn} />
       
       <main className="flex-1 pt-24 pb-20">
         {/* Banner/Header Ristorante */}

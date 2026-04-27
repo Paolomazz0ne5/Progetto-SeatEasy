@@ -5,41 +5,43 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Lock, Mail, User, Phone, KeyRound } from 'lucide-react';
 import Logo from '@/components/Logo';
+import { loginAction, registerAction } from '@/app/actions/auth';
 
 export default function UnifiedAuthPage() {
   const [role, setRole] = useState<'cliente' | 'gestore'>('cliente');
   const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     
     const formData = new FormData(e.currentTarget);
-    const data = Object.fromEntries(formData.entries());
+    formData.append('role', role); // Assicuriamoci che il ruolo sia nel FormData
     
-    // Preparazione del payload unico
-    const payload = {
-      action: mode, // 'login' or 'register'
-      role: role,   // 'cliente' or 'gestore'
-      ...data
-    };
+    let result;
+    if (mode === 'login') {
+      result = await loginAction(formData);
+    } else {
+      result = await registerAction(formData);
+    }
 
-    console.log('Payload pronto per il backend:', payload);
-
-    // Simulazione di una chiamata al backend
-    setTimeout(() => {
+    if (result && !result.success) {
+      setError(result.error || 'Operazione fallita');
       setLoading(false);
-      
-      // Navigazione simulata
+    } else if (result && result.success) {
+      // Reindirizzamento in base al ruolo
       if (role === 'gestore') {
         router.push('/gestore/dashboard');
       } else {
         router.push('/');
       }
-    }, 800);
+    }
   };
+
 
   return (
     <div className="min-h-screen bg-[#FFFDFB] flex items-center justify-center p-4 relative overflow-hidden font-sans">
@@ -59,8 +61,18 @@ export default function UnifiedAuthPage() {
            <div className="flex justify-center mb-6">
              <Logo />
            </div>
+
+           {error && (
+             <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2 text-sm font-medium">
+               <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+               </svg>
+               {error}
+             </div>
+           )}
            
            {/* Selettore Ruolo */}
+
            <div className="bg-gray-100 p-1 rounded-2xl inline-flex gap-1 mb-2 shadow-inner">
              <button
                type="button"
