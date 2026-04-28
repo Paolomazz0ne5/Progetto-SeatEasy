@@ -52,11 +52,6 @@ export default function UnifiedAuthPage() {
       
       <div className="relative z-10 w-full max-w-md bg-white/85 backdrop-blur-xl border border-[#F5CBA7]/60 rounded-[2rem] p-8 sm:p-10 shadow-2xl flex flex-col transition-all duration-300">
         
-        <Link href="/" className="inline-flex items-center gap-2 text-gray-500 hover:text-[#781D2D] mb-6 transition-colors self-start group">
-           <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" /> 
-           <span className="text-sm font-medium">Torna alla home</span>
-        </Link>
-        
         <div className="text-center mb-8">
            <div className="flex justify-center mb-6">
              <Logo />

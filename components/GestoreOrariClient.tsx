@@ -1,15 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Clock, Plus, Trash2, Edit, Save, Users, X, Activity } from 'lucide-react';
-import { createOrario, updateOrario, deleteOrario, createTurno, updateTurno, deleteTurno } from '@/app/actions/orari';
-
-type Turno = {
-  idTurno: number;
-  idOrario: number;
-  nomeTurno: string;
-  maxPrenotazioni: number;
-};
+import { Clock, Plus, Trash2, Edit, Save, Users, X } from 'lucide-react';
+import { createOrario, updateOrario, deleteOrario } from '@/app/actions/orari';
 
 type Orario = {
   idOrario: number;
@@ -17,7 +10,6 @@ type Orario = {
   oraInizio: string;
   oraFine: string;
   durataMediaServizio: number;
-  turni: Turno[];
 };
 
 export default function GestoreOrariClient({ initialOrari }: { initialOrari: Orario[] }) {
@@ -26,7 +18,7 @@ export default function GestoreOrariClient({ initialOrari }: { initialOrari: Ora
 
   // Fascia Oraria State
   const [editOrarioId, setEditOrarioId] = useState<number | null>(null);
-  const [orarioForm, setOrarioForm] = useState({ nome: '', oraInizio: '', oraFine: '', durataMed: 90 });
+  const [orarioForm, setOrarioForm] = useState({ nome: '', oraInizio: '', oraFine: '' });
   const [showAddOrario, setShowAddOrario] = useState(false);
 
   // Turno Modal State
@@ -44,52 +36,23 @@ export default function GestoreOrariClient({ initialOrari }: { initialOrari: Ora
   const handleSaveOrario = async () => {
     setLoading(true);
     if (editOrarioId) {
-      await updateOrario(editOrarioId, orarioForm.nome, orarioForm.oraInizio, orarioForm.oraFine, orarioForm.durataMed);
+      await updateOrario(editOrarioId, orarioForm.nome, orarioForm.oraInizio, orarioForm.oraFine, 0);
     } else {
-      await createOrario(orarioForm.nome, orarioForm.oraInizio, orarioForm.oraFine, orarioForm.durataMed);
+      await createOrario(orarioForm.nome, orarioForm.oraInizio, orarioForm.oraFine, 0);
     }
     window.location.reload();
   };
 
   const handleEditOrarioInit = (o: Orario) => {
     setEditOrarioId(o.idOrario);
-    setOrarioForm({ nome: o.nome, oraInizio: o.oraInizio, oraFine: o.oraFine, durataMed: o.durataMediaServizio });
+    setOrarioForm({ nome: o.nome, oraInizio: o.oraInizio, oraFine: o.oraFine });
     setShowAddOrario(true);
   };
 
   const handleDeleteOrario = async (id: number) => {
-    if (confirm("Attenzione: questo eliminerà la fascia oraria e tutti i turni ad essa associati. Procedere?")) {
+    if (confirm("Attenzione: questo eliminerà la fascia oraria. Procedere?")) {
       setLoading(true);
       await deleteOrario(id);
-      window.location.reload();
-    }
-  };
-
-  // --------------
-  // Turni Actions
-  // --------------
-  const openAddTurno = (idOrario: number) => {
-    setTurnoModal({ isOpen: true, idOrario, idTurno: null, nomeTurno: '20:00', maxP: 20 });
-  };
-
-  const openEditTurno = (t: Turno) => {
-    setTurnoModal({ isOpen: true, idOrario: t.idOrario, idTurno: t.idTurno, nomeTurno: t.nomeTurno, maxP: t.maxPrenotazioni });
-  };
-
-  const handleSaveTurno = async () => {
-    setLoading(true);
-    if (turnoModal.idTurno) {
-      await updateTurno(turnoModal.idTurno, turnoModal.nomeTurno, turnoModal.maxP);
-    } else if (turnoModal.idOrario) {
-      await createTurno(turnoModal.idOrario, turnoModal.nomeTurno, turnoModal.maxP);
-    }
-    window.location.reload();
-  };
-
-  const handleDeleteTurno = async (idTurno: number) => {
-    if (confirm("Eliminare questo slot turno?")) {
-      setLoading(true);
-      await deleteTurno(idTurno);
       window.location.reload();
     }
   };
@@ -112,7 +75,7 @@ export default function GestoreOrariClient({ initialOrari }: { initialOrari: Ora
           <button 
              onClick={() => {
                setEditOrarioId(null);
-               setOrarioForm({ nome: 'Nuovo Servizio', oraInizio: '12:00', oraFine: '15:00', durataMed: 90 });
+               setOrarioForm({ nome: 'Nuovo Servizio', oraInizio: '12:00', oraFine: '15:00' });
                setShowAddOrario(true);
              }}
              className="bg-[#D35400] text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-[#ba4a00] transition shadow-md"
@@ -129,22 +92,18 @@ export default function GestoreOrariClient({ initialOrari }: { initialOrari: Ora
              </button>
              <h3 className="text-lg font-bold text-[#781D2D] mb-4">{editOrarioId ? 'Modifica Fascia Oraria' : 'Nuova Fascia Oraria'}</h3>
              
-             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                <div>
                  <label className="block text-xs font-semibold text-gray-500 mb-1">Nome Servizio</label>
-                 <input type="text" value={orarioForm.nome} onChange={e => setOrarioForm({...orarioForm, nome: e.target.value})} className="w-full p-2.5 bg-white border border-[#F5CBA7] rounded-xl focus:ring-2 focus:ring-[#D35400] focus:outline-none font-bold text-[#781D2D]" placeholder="es. Pranzo" />
+                 <input type="text" value={orarioForm.nome} onChange={e => setOrarioForm({...orarioForm, nome: e.target.value})} className="w-full p-2.5 bg-white border border-[#F5CBA7] rounded-xl focus:ring-2 focus:ring-[#D35400] focus:outline-none font-bold text-black" placeholder="es. Pranzo" />
                </div>
                <div>
                  <label className="block text-xs font-semibold text-gray-500 mb-1">Ora Inizio</label>
-                 <input type="time" value={orarioForm.oraInizio} onChange={e => setOrarioForm({...orarioForm, oraInizio: e.target.value})} className="w-full p-2.5 bg-white border border-[#F5CBA7] rounded-xl focus:ring-2 focus:ring-[#D35400] focus:outline-none" />
+                 <input type="time" value={orarioForm.oraInizio} onChange={e => setOrarioForm({...orarioForm, oraInizio: e.target.value})} className="w-full p-2.5 bg-white border border-[#F5CBA7] rounded-xl focus:ring-2 focus:ring-[#D35400] focus:outline-none font-bold text-black" />
                </div>
                <div>
                  <label className="block text-xs font-semibold text-gray-500 mb-1">Ora Fine</label>
-                 <input type="time" value={orarioForm.oraFine} onChange={e => setOrarioForm({...orarioForm, oraFine: e.target.value})} className="w-full p-2.5 bg-white border border-[#F5CBA7] rounded-xl focus:ring-2 focus:ring-[#D35400] focus:outline-none" />
-               </div>
-               <div>
-                 <label className="block text-xs font-semibold text-gray-500 mb-1">Durata Media Tavolo (min)</label>
-                 <input type="number" min={15} step={15} value={orarioForm.durataMed} onChange={e => setOrarioForm({...orarioForm, durataMed: Number(e.target.value)})} className="w-full p-2.5 bg-white border border-[#F5CBA7] rounded-xl focus:ring-2 focus:ring-[#D35400] focus:outline-none" />
+                 <input type="time" value={orarioForm.oraFine} onChange={e => setOrarioForm({...orarioForm, oraFine: e.target.value})} className="w-full p-2.5 bg-white border border-[#F5CBA7] rounded-xl focus:ring-2 focus:ring-[#D35400] focus:outline-none font-bold text-black" />
                </div>
              </div>
              
@@ -174,97 +133,22 @@ export default function GestoreOrariClient({ initialOrari }: { initialOrari: Ora
                      <h3 className="font-extrabold text-[#781D2D] text-lg uppercase tracking-wide">{orario.nome}</h3>
                      <p className="text-sm font-medium text-gray-500 flex items-center gap-2">
                        <span>{orario.oraInizio} - {orario.oraFine}</span>
-                       <span className="text-[#F5CBA7]">|</span>
-                       <span className="flex items-center gap-1"><Activity size={14} className="text-green-500" /> {orario.durataMediaServizio} min medi</span>
                      </p>
                    </div>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => handleEditOrarioInit(orario)} className="p-2 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors">
-                    <Edit size={18} />
-                  </button>
-                  <button onClick={() => handleDeleteOrario(orario.idOrario)} className="p-2 text-red-500 bg-red-50 hover:bg-red-100 rounded-xl transition-colors">
-                    <Trash2 size={18} />
-                  </button>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleEditOrarioInit(orario)} className="p-2 text-blue-500 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors">
+                      <Edit size={18} />
+                    </button>
+                    <button onClick={() => handleDeleteOrario(orario.idOrario)} className="p-2 text-red-500 bg-red-50 hover:bg-red-100 rounded-xl transition-colors">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                 </div>
               </div>
-
-              {/* 2. SEZIONE TURNI (Inside Orario) */}
-              <div className="p-5 bg-[#FFFDFB]">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="font-bold text-[#781D2D]/80 text-sm flex items-center gap-2">
-                     <Users size={16} /> Slot Turni e Limiti di Prenotazione
-                  </h4>
-                  <button onClick={() => openAddTurno(orario.idOrario)} className="text-xs font-bold text-[#D35400] flex items-center gap-1 hover:text-[#ba4a00]">
-                    <Plus size={14} /> Aggiungi Turno
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {orario.turni.length === 0 ? (
-                    <div className="col-span-full text-xs text-gray-400 italic">Nessun turno specifico definito. Le prenotazioni non avranno slot pre-organizzati.</div>
-                  ) : (
-                    orario.turni.map(turno => (
-                      <div key={turno.idTurno} className="border border-gray-200 rounded-xl p-3 bg-white flex flex-col hover:border-[#F5CBA7] transition-colors relative group">
-                         <div className="flex items-center justify-between mb-2">
-                           <span className="font-bold text-[#781D2D]">{turno.nomeTurno}</span>
-                           <span className="text-xs font-bold bg-gray-100 text-gray-600 px-2 py-1 rounded-lg">Max {turno.maxPrenotazioni}</span>
-                         </div>
-                         <div className="flex opacity-0 group-hover:opacity-100 transition-opacity absolute top-[-10px] right-[-10px] gap-1">
-                           <button onClick={() => openEditTurno(turno)} className="p-1 bg-white border border-gray-200 rounded-full text-blue-500 hover:bg-blue-50 shadow-sm"><Edit size={12} /></button>
-                           <button onClick={() => handleDeleteTurno(turno.idTurno)} className="p-1 bg-white border border-gray-200 rounded-full text-red-500 hover:bg-red-50 shadow-sm"><Trash2 size={12} /></button>
-                         </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Turno Modal */}
-      {turnoModal.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
-            <h3 className="text-xl font-bold text-[#781D2D] mb-6 flex items-center gap-2">
-              <Users className="text-[#D35400]" size={24} /> {turnoModal.idTurno ? 'Modifica Turno' : 'Aggiungi Turno'}
-            </h3>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-600 mb-1">Nome/Orario Turno</label>
-                <input 
-                  type="text"
-                  placeholder="es. 20:00 o Primo Turno"
-                  value={turnoModal.nomeTurno} 
-                  onChange={e => setTurnoModal(prev => ({ ...prev, nomeTurno: e.target.value }))} 
-                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D35400] font-bold" 
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-600 mb-1">Max Prenotazioni Raggiungibili</label>
-                <div className="flex items-center gap-3">
-                  <input 
-                    type="number" min={1}
-                    value={turnoModal.maxP} 
-                    onChange={e => setTurnoModal(prev => ({ ...prev, maxP: Number(e.target.value) }))} 
-                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D35400] font-bold text-lg text-[#781D2D]" 
-                  />
-                  <span className="text-sm font-medium text-gray-400">tavoli/booking</span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="mt-8 flex justify-end gap-3">
-              <button onClick={() => setTurnoModal({ isOpen: false, idOrario: null, idTurno: null, nomeTurno: '', maxP: 0 })} className="px-5 py-2.5 text-gray-500 font-medium hover:bg-gray-100 rounded-xl transition-colors">Annulla</button>
-              <button onClick={handleSaveTurno} disabled={loading} className="px-5 py-2.5 bg-[#781D2D] text-white font-bold rounded-xl hover:bg-[#5f1723] transition-colors shadow-md">Salva Turno</button>
-            </div>
+            ))}
           </div>
-        </div>
-      )}
-
-    </div>
-  );
-}
+        </section>
+      </div>
+    );
+  }

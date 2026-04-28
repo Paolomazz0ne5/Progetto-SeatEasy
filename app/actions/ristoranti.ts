@@ -19,6 +19,25 @@ export type Ristorante = {
   caparraRichiesta: number | null;
 };
 
+export async function ensureRistoranteColumns() {
+  const db = getDb();
+  try {
+    const tableInfo = db.prepare("PRAGMA table_info(Ristorante)").all() as any[];
+    const columns = tableInfo.map(col => col.name);
+
+    if (!columns.includes('politicaNoShow')) {
+      db.prepare("ALTER TABLE Ristorante ADD COLUMN politicaNoShow TEXT").run();
+    }
+    if (!columns.includes('caparraRichiesta')) {
+      db.prepare("ALTER TABLE Ristorante ADD COLUMN caparraRichiesta REAL").run();
+    }
+  } catch (err) {
+    console.error("Error patching Ristorante table:", err);
+  } finally {
+    db.close();
+  }
+}
+
 export async function getMyRistoranti(): Promise<{ success: boolean; data?: Ristorante[]; error?: string }> {
   const cookieStore = await cookies();
   const sessionId = cookieStore.get('seateasy_session')?.value;
@@ -27,6 +46,7 @@ export async function getMyRistoranti(): Promise<{ success: boolean; data?: Rist
     return { success: false, error: 'Non autenticato.' };
   }
 
+  await ensureRistoranteColumns();
   const db = getDb();
   try {
     const rows = db
@@ -54,6 +74,7 @@ export async function addRistorante(formData: FormData): Promise<{ success: bool
     return { success: false, error: 'Non autenticato.' };
   }
 
+  await ensureRistoranteColumns();
   const nome = (formData.get('nome') as string)?.trim();
   const indirizzo = (formData.get('indirizzo') as string)?.trim();
   const telefono = (formData.get('telefono') as string)?.trim() || null;
@@ -93,6 +114,7 @@ export async function updateRistorante(
     return { success: false, error: 'Non autenticato.' };
   }
 
+  await ensureRistoranteColumns();
   const nome = (formData.get('nome') as string)?.trim();
   const indirizzo = (formData.get('indirizzo') as string)?.trim();
   const telefono = (formData.get('telefono') as string)?.trim() || null;

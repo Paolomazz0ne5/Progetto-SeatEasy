@@ -111,7 +111,7 @@ export default function TableMap({ tavoli }: { tavoli: Tavolo[] }) {
               value={selectedTime}
               onChange={(e) => setSelectedTime(e.target.value)}
               disabled={!selectedTable}
-              className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#D35400] focus:border-[#D35400] transition-colors"
+              className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black font-medium focus:outline-none focus:ring-2 focus:ring-[#D35400] focus:border-[#D35400] transition-colors"
             >
               <option value="19:00">19:00</option>
               <option value="19:30">19:30</option>
@@ -129,7 +129,7 @@ export default function TableMap({ tavoli }: { tavoli: Tavolo[] }) {
               disabled={!selectedTable}
               rows={2}
               placeholder="Allergie, seggiolone, anniversario..."
-              className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#D35400] focus:border-[#D35400] transition-colors resize-none"
+              className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-black font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#D35400] focus:border-[#D35400] transition-colors resize-none"
             ></textarea>
           </div>
         </div>

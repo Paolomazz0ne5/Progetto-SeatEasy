@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import Link from 'next/link';
 import { ArrowLeft, MessageSquareHeart } from 'lucide-react';
-import GestoreRelazioniClient, { Review, ChatContact, ChatMessage } from '@/components/GestoreRelazioniClient';
+import GestoreRelazioniClient, { Review } from '@/components/GestoreRelazioniClient';
 import { ensureCRMDatabase } from '@/app/actions/relazioni';
 
 export const dynamic = 'force-dynamic';
@@ -14,7 +14,6 @@ export default async function GestoreRelazioniPage() {
   const db = new Database(dbPath);
 
   // FETCH REVIEWS
-  // Note: we fetch reviews joined with Account to get customer names
   const reviews = db.prepare(`
     SELECT 
       R.idRecensione, 
@@ -28,37 +27,6 @@ export default async function GestoreRelazioniPage() {
     JOIN Account A ON C.idAccount = A.idAccount
     ORDER BY R.dataCreazione DESC
   `).all() as Review[];
-
-  // FETCH CHATS
-  // Determine distinct conversations (usually one per active Prenotazione, but we map to Client)
-  // For simplicity, we'll map recent Prenotazioni as "Contacts" if they have or can have chats.
-  // We'll get reservations that actually have Chat Notifiche, or just latest 5
-  const activeChatsRaw = db.prepare(`
-    SELECT DISTINCT
-      P.idPrenotazione,
-      P.idCliente,
-      A.nome as clienteNome,
-      A.cognome as clienteCognome
-    FROM Prenotazione P
-    JOIN Cliente C ON P.idCliente = C.idAccount
-    JOIN Account A ON C.idAccount = A.idAccount
-    WHERE EXISTS (
-       SELECT 1 FROM Notifica N WHERE N.idPrenotazione = P.idPrenotazione AND N.tipo = 'Chat'
-    ) OR P.stato IN ('Confermata', 'In Attesa')
-    ORDER BY P.dataPrenotazione DESC
-    LIMIT 10
-  `).all() as Omit<ChatContact, 'messages'>[];
-
-  const chats: ChatContact[] = activeChatsRaw.map(ac => {
-    const messages = db.prepare(`
-      SELECT idNotifica, messaggio, statoInvio, dataInvio 
-      FROM Notifica 
-      WHERE idPrenotazione = ? AND tipo = 'Chat'
-      ORDER BY dataInvio ASC
-    `).all(ac.idPrenotazione) as ChatMessage[];
-    
-    return { ...ac, messages };
-  });
 
   db.close();
 
@@ -83,7 +51,7 @@ export default async function GestoreRelazioniPage() {
               </h1>
             </div>
             <p className="text-[#D35400] font-medium mt-2 pl-14">
-              Cura l'esperienza prima e dopo la cena: chat live, automazioni e feedback.
+              Gestisci il feedback dei clienti e configura le comunicazioni automatiche via Email e SMS.
             </p>
           </div>
 
@@ -92,16 +60,16 @@ export default async function GestoreRelazioniPage() {
                <MessageSquareHeart size={28} />
              </div>
              <div>
-               <span className="block text-sm uppercase tracking-wider text-gray-500 font-bold mb-1">Status Reputation</span>
+               <span className="block text-sm uppercase tracking-wider text-gray-500 font-bold mb-1">Reputation Score</span>
                <div className="flex items-baseline gap-1.5">
-                 <span className="text-2xl font-black text-[#781D2D]">Eccezionale</span>
+                 <span className="text-2xl font-black text-[#781D2D]">Eccellente</span>
                </div>
              </div>
           </div>
         </div>
 
         {/* Client Interface */}
-        <GestoreRelazioniClient reviews={reviews} chats={chats} />
+        <GestoreRelazioniClient reviews={reviews} />
         
       </div>
     </>
