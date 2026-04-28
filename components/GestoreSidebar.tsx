@@ -26,7 +26,7 @@ export default function GestoreSidebar() {
       
       {/* Brand Header */}
       <div className="p-6 pb-2 border-b border-[#F5CBA7]/30">
-        <Link href="/" className="block">
+        <Link href="/gestore/ristoranti" className="block">
           <Logo className="mb-2 scale-75 origin-left" />
         </Link>
         <div className="mt-4">

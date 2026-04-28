@@ -20,8 +20,10 @@ export type ReservationData = {
 
 export default function GestoreDashboardClient({
   reservations,
+  stats,
 }: {
   reservations: ReservationData[];
+  stats: { attive: number; noShows: number };
 }) {
   const [loadingId, setLoadingId] = useState<number | null>(null);
   
@@ -85,33 +87,48 @@ export default function GestoreDashboardClient({
   };
 
   return (
-    <div className="w-full">
-      <div className="bg-white/60 backdrop-blur-xl border border-white/40 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-3xl overflow-hidden relative z-10">
+    <div className="w-full flex text-[#781D2D]">
+      <div className="flex-1 bg-[#FFFDFB]/60 backdrop-blur-sm rounded-3xl border border-[#F5CBA7]/30 shadow-sm overflow-hidden relative">
         
-        <div className="p-6 border-b border-[#F5CBA7]/40 bg-gradient-to-r from-white/80 to-white/40">
-          <h2 className="text-2xl font-bold text-[#781D2D] flex items-center gap-3">
-            <span className="bg-[#FDF1E9] p-2 rounded-xl border border-[#F5CBA7]/50">
-               <svg className="w-6 h-6 text-[#D35400]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-               </svg>
-            </span>
-            Prenotazioni in Corso
-          </h2>
+        <div className="p-8 border-b border-[#F5CBA7]/20 bg-white/40 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="bg-[#D35400]/10 text-[#D35400] w-12 h-12 rounded-xl flex items-center justify-center">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-2xl font-extrabold text-[#781D2D]">Prenotazioni in Corso</h2>
+              <p className="text-sm font-medium text-[#D35400]/70">Gestisci e monitora le prenotazioni del ristorante.</p>
+            </div>
+          </div>
+
+          {/* Inline Stats */}
+          <div className="flex items-center bg-[#FDF1E9] px-6 py-3 rounded-2xl border border-[#F5CBA7]/50 divide-x divide-[#F5CBA7]/30">
+            <div className="pr-6 flex items-center gap-3">
+              <span className="text-2xl font-black text-[#781D2D]">{stats.attive}</span>
+              <span className="text-xs uppercase tracking-widest font-bold text-[#781D2D]/60">Attive</span>
+            </div>
+            <div className="pl-6 flex items-center gap-3">
+              <span className="text-2xl font-black text-[#E74C3C]">{stats.noShows}</span>
+              <span className="text-xs uppercase tracking-widest font-bold text-[#E74C3C]/60">No-Show</span>
+            </div>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-[#FFFDFB] text-[#781D2D]/70 font-semibold text-sm uppercase tracking-wider">
-                <th className="p-4 border-b border-[#F5CBA7]/40">Cliente</th>
-                <th className="p-4 border-b border-[#F5CBA7]/40">Data</th>
-                <th className="p-4 border-b border-[#F5CBA7]/40">Persone</th>
-                <th className="p-4 border-b border-[#F5CBA7]/40">Stato</th>
-                <th className="p-4 border-b border-[#F5CBA7]/40">Info</th>
-                <th className="p-4 border-b border-[#F5CBA7]/40 text-right">Azioni</th>
+              <tr className="bg-[#FDF1E9]/30 text-[#781D2D] font-bold text-sm uppercase tracking-wider">
+                <th className="p-5 border-b border-[#F5CBA7]/20">Cliente</th>
+                <th className="p-5 border-b border-[#F5CBA7]/20">Data</th>
+                <th className="p-5 border-b border-[#F5CBA7]/20">Persone</th>
+                <th className="p-5 border-b border-[#F5CBA7]/20">Stato</th>
+                <th className="p-5 border-b border-[#F5CBA7]/20">Info</th>
+                <th className="p-5 border-b border-[#F5CBA7]/20 text-right">Azioni</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#F5CBA7]/20">
+            <tbody className="divide-y divide-[#F5CBA7]/10 bg-white/30">
               {reservations.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-gray-500 font-medium">Nessuna prenotazione attiva trovata.</td>

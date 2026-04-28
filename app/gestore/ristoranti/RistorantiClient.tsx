@@ -1,0 +1,440 @@
+'use client';
+
+import React, { useState, useTransition, useRef } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import {
+  Plus, X, Store, MapPin, Phone, Mail, ChevronRight,
+  FileText, Banknote, Loader2, AlertCircle, Pencil,
+} from 'lucide-react';
+import { addRistorante, updateRistorante, Ristorante } from '@/app/actions/ristoranti';
+
+// ─── Shared form fields ───────────────────────────────────────────────────────
+function RistoranteFormFields({ defaults }: { defaults?: Partial<Ristorante> }) {
+  return (
+    <div className="overflow-y-auto px-6 py-5 space-y-4 flex-1">
+      {/* Nome */}
+      <div className="space-y-1.5">
+        <label className="block text-xs font-bold text-gray-700 ml-1">
+          Nome Ristorante <span className="text-[#D35400]">*</span>
+        </label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+            <Store size={15} />
+          </div>
+          <input
+            name="nome"
+            type="text"
+            required
+            defaultValue={defaults?.nome ?? ''}
+            placeholder="Es: Trattoria da Mario"
+            className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-[#D35400] transition-shadow text-gray-900 text-sm"
+          />
+        </div>
+      </div>
+
+      {/* Indirizzo */}
+      <div className="space-y-1.5">
+        <label className="block text-xs font-bold text-gray-700 ml-1">
+          Indirizzo <span className="text-[#D35400]">*</span>
+        </label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+            <MapPin size={15} />
+          </div>
+          <input
+            name="indirizzo"
+            type="text"
+            required
+            defaultValue={defaults?.indirizzo ?? ''}
+            placeholder="Es: Via Roma 1, Milano"
+            className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-[#D35400] transition-shadow text-gray-900 text-sm"
+          />
+        </div>
+      </div>
+
+      {/* Telefono + Email */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label className="block text-xs font-bold text-gray-700 ml-1">Telefono</label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+              <Phone size={15} />
+            </div>
+            <input
+              name="telefono"
+              type="tel"
+              defaultValue={defaults?.telefono ?? ''}
+              placeholder="+39 02 0000000"
+              className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-[#D35400] transition-shadow text-gray-900 text-sm"
+            />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-bold text-gray-700 ml-1">Email</label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+              <Mail size={15} />
+            </div>
+            <input
+              name="email"
+              type="email"
+              defaultValue={defaults?.email ?? ''}
+              placeholder="info@ristorante.it"
+              className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-[#D35400] transition-shadow text-gray-900 text-sm"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Politica No-Show */}
+      <div className="space-y-1.5">
+        <label className="block text-xs font-bold text-gray-700 ml-1">Politica No-Show</label>
+        <div className="relative">
+          <div className="absolute top-3 left-0 pl-3.5 flex items-start pointer-events-none text-gray-400">
+            <FileText size={15} />
+          </div>
+          <textarea
+            name="politicaNoShow"
+            rows={3}
+            defaultValue={defaults?.politicaNoShow ?? ''}
+            placeholder="Es: In caso di mancata presentazione senza disdetta entro 24h, verrà addebitata la caparra."
+            className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-[#D35400] transition-shadow text-gray-900 text-sm resize-none"
+          />
+        </div>
+      </div>
+
+      {/* Caparra */}
+      <div className="space-y-1.5">
+        <label className="block text-xs font-bold text-gray-700 ml-1">Caparra Richiesta (€)</label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+            <Banknote size={15} />
+          </div>
+          <input
+            name="caparraRichiesta"
+            type="number"
+            min="0"
+            step="0.01"
+            defaultValue={defaults?.caparraRichiesta ?? ''}
+            placeholder="0.00"
+            className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-[#D35400] transition-shadow text-gray-900 text-sm"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Modal wrapper ─────────────────────────────────────────────────────────────
+function RistoranteModal({
+  title,
+  icon,
+  submitLabel,
+  isPending,
+  error,
+  onClose,
+  onSubmit,
+  formRef,
+  children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  submitLabel: string;
+  isPending: boolean;
+  error: string | null;
+  onClose: () => void;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  formRef: React.RefObject<HTMLFormElement | null>;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#fdf1e9] flex items-center justify-center">
+              {icon}
+            </div>
+            <h2 className="text-lg font-extrabold text-gray-900">{title}</h2>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 transition-colors text-gray-500">
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Error banner */}
+        {error && (
+          <div className="mx-6 mt-4 flex items-center gap-2 p-3.5 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm font-medium">
+            <AlertCircle size={16} className="flex-shrink-0" />
+            {error}
+          </div>
+        )}
+
+        {/* Form body */}
+        <form ref={formRef} onSubmit={onSubmit} className="flex flex-col flex-1 overflow-hidden">
+          {children}
+
+          {/* Footer */}
+          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors"
+            >
+              Annulla
+            </button>
+            <button
+              type="submit"
+              disabled={isPending}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#D35400] to-[#781D2D] text-white text-sm font-bold rounded-xl hover:shadow-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              {isPending ? <Loader2 size={15} className="animate-spin" /> : null}
+              {isPending ? 'Salvataggio...' : submitLabel}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Add modal ────────────────────────────────────────────────────────────────
+function AddRistoranteModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    setError(null);
+    startTransition(async () => {
+      const result = await addRistorante(formData);
+      if (!result.success) {
+        setError(result.error ?? 'Errore sconosciuto.');
+      } else {
+        formRef.current?.reset();
+        onSuccess();
+      }
+    });
+  }
+
+  return (
+    <RistoranteModal
+      title="Nuovo Ristorante"
+      icon={<Store size={18} className="text-[#D35400]" />}
+      submitLabel="Salva Ristorante"
+      isPending={isPending}
+      error={error}
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      formRef={formRef}
+    >
+      <RistoranteFormFields />
+    </RistoranteModal>
+  );
+}
+
+// ─── Edit modal ───────────────────────────────────────────────────────────────
+function EditRistoranteModal({
+  ristorante,
+  onClose,
+  onSuccess,
+}: {
+  ristorante: Ristorante;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    setError(null);
+    startTransition(async () => {
+      const result = await updateRistorante(ristorante.idRistorante, formData);
+      if (!result.success) {
+        setError(result.error ?? 'Errore sconosciuto.');
+      } else {
+        onSuccess();
+      }
+    });
+  }
+
+  return (
+    <RistoranteModal
+      title="Modifica Ristorante"
+      icon={<Pencil size={18} className="text-[#D35400]" />}
+      submitLabel="Salva Modifiche"
+      isPending={isPending}
+      error={error}
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      formRef={formRef}
+    >
+      <RistoranteFormFields defaults={ristorante} />
+    </RistoranteModal>
+  );
+}
+
+// ─── Card ─────────────────────────────────────────────────────────────────────
+function RistoranteCard({
+  ristorante,
+  onEdit,
+}: {
+  ristorante: Ristorante;
+  onEdit: (r: Ristorante) => void;
+}) {
+  return (
+    <div className="group relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col">
+      <div className="h-2 bg-gradient-to-r from-[#D35400] to-[#781D2D]" />
+      <div className="p-6 flex flex-col flex-1">
+
+        {/* Name row + edit button */}
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-12 h-12 rounded-xl bg-[#fdf1e9] flex items-center justify-center flex-shrink-0">
+            <Store size={22} className="text-[#D35400]" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg font-extrabold text-gray-900 leading-tight truncate">
+              {ristorante.nome}
+            </h2>
+          </div>
+          {/* Edit icon button */}
+          <button
+            onClick={() => onEdit(ristorante)}
+            title="Modifica ristorante"
+            className="p-2 rounded-xl text-gray-400 hover:text-[#D35400] hover:bg-[#fdf1e9] transition-colors flex-shrink-0"
+          >
+            <Pencil size={16} />
+          </button>
+        </div>
+
+        {/* Details */}
+        <div className="space-y-2.5 flex-1">
+          <div className="flex items-start gap-2.5 text-sm text-gray-600">
+            <MapPin size={15} className="text-[#D35400] mt-0.5 flex-shrink-0" />
+            <span>{ristorante.indirizzo}</span>
+          </div>
+          {ristorante.telefono && (
+            <div className="flex items-center gap-2.5 text-sm text-gray-600">
+              <Phone size={15} className="text-[#D35400] flex-shrink-0" />
+              <span>{ristorante.telefono}</span>
+            </div>
+          )}
+          {ristorante.email && (
+            <div className="flex items-center gap-2.5 text-sm text-gray-600">
+              <Mail size={15} className="text-[#D35400] flex-shrink-0" />
+              <span className="truncate">{ristorante.email}</span>
+            </div>
+          )}
+          {ristorante.caparraRichiesta != null && ristorante.caparraRichiesta > 0 && (
+            <div className="flex items-center gap-2.5 text-sm text-gray-600">
+              <Banknote size={15} className="text-[#D35400] flex-shrink-0" />
+              <span>Caparra: €{ristorante.caparraRichiesta.toFixed(2)}</span>
+            </div>
+          )}
+        </div>
+
+        {/* CTA */}
+        <Link
+          href={`/gestore/dashboard?ristorante=${ristorante.idRistorante}`}
+          className="mt-6 w-full inline-flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-[#D35400] to-[#781D2D] text-white text-sm font-bold rounded-xl hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+        >
+          Entra nella Gestione
+          <ChevronRight size={16} />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Client Component ────────────────────────────────────────────────────
+export default function RistorantiClient({ initialData }: { initialData: Ristorante[] }) {
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingRistorante, setEditingRistorante] = useState<Ristorante | null>(null);
+  const router = useRouter();
+
+  function handleSuccess() {
+    setShowAddModal(false);
+    setEditingRistorante(null);
+    router.refresh();
+  }
+
+  return (
+    <>
+      {/* Page header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 mb-10 border-b-2 border-[#F5CBA7] pb-6">
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#781D2D] tracking-tight">
+            I Miei Ristoranti
+          </h1>
+          <p className="mt-2 text-[#D35400] font-medium text-base">
+            Seleziona un ristorante per accedere alla sua area di gestione.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="inline-flex items-center gap-2 px-6 py-3.5 bg-gradient-to-r from-[#D35400] to-[#781D2D] text-white text-sm font-bold rounded-xl shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 whitespace-nowrap self-start sm:self-auto"
+        >
+          <Plus size={18} />
+          Aggiungi Nuovo Ristorante
+        </button>
+      </div>
+
+      {/* Empty state */}
+      {initialData.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="w-20 h-20 rounded-full bg-[#fae5d3] flex items-center justify-center mb-6">
+            <Store size={36} className="text-[#D35400]" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Nessun ristorante trovato</h2>
+          <p className="text-gray-500 max-w-sm mb-6">
+            Non hai ancora registrato nessun ristorante. Inizia aggiungendone uno!
+          </p>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-[#D35400] to-[#781D2D] text-white text-sm font-bold rounded-xl shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200"
+          >
+            <Plus size={18} />
+            Aggiungi il tuo primo ristorante
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {initialData.map((r) => (
+            <RistoranteCard
+              key={r.idRistorante}
+              ristorante={r}
+              onEdit={setEditingRistorante}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Add modal */}
+      {showAddModal && (
+        <AddRistoranteModal
+          onClose={() => setShowAddModal(false)}
+          onSuccess={handleSuccess}
+        />
+      )}
+
+      {/* Edit modal */}
+      {editingRistorante && (
+        <EditRistoranteModal
+          ristorante={editingRistorante}
+          onClose={() => setEditingRistorante(null)}
+          onSuccess={handleSuccess}
+        />
+      )}
+    </>
+  );
+}

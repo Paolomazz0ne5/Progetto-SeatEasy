@@ -29,17 +29,11 @@ export default function Navbar({ isLoggedIn: initialIsLoggedIn = false }: { isLo
           <div className="flex items-center space-x-6">
             {!isLoggedIn ? (
               <>
-                <Link 
+                <Link
                   href="/auth"
-                  className="font-medium text-[#781D2D] hover:text-[#5f1723] transition-colors"
+                  className="bg-[#781D2D] text-white px-5 py-2 rounded-full font-semibold hover:bg-[#5f1723] transition-colors shadow-sm"
                 >
-                  Login
-                </Link>
-                <Link 
-                  href="/auth"
-                  className="bg-[#781D2D] text-white px-5 py-2 rounded-full font-medium hover:bg-[#5f1723] transition-colors shadow-sm"
-                >
-                  Create Account
+                  Login / Registrati
                 </Link>
               </>
 
@@ -51,19 +45,16 @@ export default function Navbar({ isLoggedIn: initialIsLoggedIn = false }: { isLo
                 >
                   Logout
                 </button>
-                <Link 
-                  href="/gestore/dashboard" 
-                  className="p-2 rounded-full bg-white/40 hover:bg-white/60 transition-colors text-[#781D2D] relative group"
-                  title="Profile & Dashboard"
+                <div
+                  className="p-2 rounded-full bg-white/40 text-[#781D2D] relative cursor-default"
+                  title="Profilo"
                 >
-                  {/* Profile / History Icon */}
+                  {/* Profile Icon */}
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
                     <circle cx="12" cy="7" r="4" />
                   </svg>
-                  {/* Notification dot to match the vibe */}
-                  <span className="absolute top-1 right-1 block w-2 h-2 rounded-full bg-[#E74C3C] ring-2 ring-[#F5CBA7]"></span>
-                </Link>
+                </div>
               </>
             )}
           </div>

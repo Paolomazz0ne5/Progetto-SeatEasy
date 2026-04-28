@@ -35,7 +35,7 @@ export default function UnifiedAuthPage() {
     } else if (result && result.success) {
       // Reindirizzamento in base al ruolo
       if (role === 'gestore') {
-        router.push('/gestore/dashboard');
+        router.push('/gestore/ristoranti');
       } else {
         router.push('/');
       }
