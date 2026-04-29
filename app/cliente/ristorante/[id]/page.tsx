@@ -27,8 +27,16 @@ export default async function RistoranteDettaglio({ params }: { params: Promise<
     );
   }
 
-  // Recupera i tavoli per la mappa
-  const tavoli = db.prepare('SELECT T.* FROM Tavolo T JOIN Sala S ON T.idSala = S.idSala WHERE S.idRistorante = ?').all(id) as any[];
+  // Recupera i turni per il ristorante
+  const turni = db.prepare(`
+    SELECT T.idTurno, T.nomeTurno, O.oraInizio
+    FROM Turno T
+    JOIN Orario O ON T.idOrario = O.idOrario
+    WHERE O.idRistorante = ?
+  `).all(id) as any[];
+
+  // Recupera i tavoli (base)
+  const tavoliBase = db.prepare('SELECT T.* FROM Tavolo T JOIN Sala S ON T.idSala = S.idSala WHERE S.idRistorante = ?').all(id) as any[];
 
   // Mock Reviews
   const recensioni = [
@@ -111,7 +119,11 @@ export default async function RistoranteDettaglio({ params }: { params: Promise<
 
           {/* Interactive Table Map Section */}
           <section id="prenota" className="scroll-mt-32">
-             <TableMap tavoli={tavoli} />
+             <TableMap 
+               initialTavoli={tavoliBase} 
+               idRistorante={Number(id)} 
+               turni={turni} 
+             />
           </section>
 
           {/* Sezione Recensioni */}
