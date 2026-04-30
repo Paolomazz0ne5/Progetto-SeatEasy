@@ -3,6 +3,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import { cookies } from 'next/headers';
+import { revalidatePath } from 'next/cache';
 
 function getDb() {
   const dbPath = path.resolve(process.cwd(), 'database.db');
@@ -17,6 +18,7 @@ export type Ristorante = {
   email: string | null;
   politicaNoShow: string | null;
   caparraRichiesta: number | null;
+  tipologia: string | null;
 };
 
 export async function ensureRistoranteColumns() {
@@ -30,6 +32,9 @@ export async function ensureRistoranteColumns() {
     }
     if (!columns.includes('caparraRichiesta')) {
       db.prepare("ALTER TABLE Ristorante ADD COLUMN caparraRichiesta REAL").run();
+    }
+    if (!columns.includes('tipologia')) {
+      db.prepare("ALTER TABLE Ristorante ADD COLUMN tipologia TEXT").run();
     }
   } catch (err) {
     console.error("Error patching Ristorante table:", err);
@@ -51,7 +56,7 @@ export async function getMyRistoranti(): Promise<{ success: boolean; data?: Rist
   try {
     const rows = db
       .prepare(
-        `SELECT idRistorante, nome, indirizzo, telefono, email, politicaNoShow, caparraRichiesta
+        `SELECT idRistorante, nome, indirizzo, telefono, email, politicaNoShow, caparraRichiesta, tipologia
          FROM Ristorante
          WHERE idGestoreRistorante = ?`
       )
@@ -82,6 +87,7 @@ export async function addRistorante(formData: FormData): Promise<{ success: bool
   const politicaNoShow = (formData.get('politicaNoShow') as string)?.trim() || null;
   const caparraRaw = formData.get('caparraRichiesta') as string;
   const caparraRichiesta = caparraRaw ? parseFloat(caparraRaw) : null;
+  const tipologia = (formData.get('tipologia') as string)?.trim() || 'Italiano';
 
   if (!nome || !indirizzo) {
     return { success: false, error: 'Nome e indirizzo sono obbligatori.' };
@@ -90,10 +96,12 @@ export async function addRistorante(formData: FormData): Promise<{ success: bool
   const db = getDb();
   try {
     db.prepare(
-      `INSERT INTO Ristorante (idGestoreRistorante, nome, indirizzo, telefono, email, politicaNoShow, caparraRichiesta)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).run(Number(sessionId), nome, indirizzo, telefono, email, politicaNoShow, caparraRichiesta);
+      `INSERT INTO Ristorante (idGestoreRistorante, nome, indirizzo, telefono, email, politicaNoShow, caparraRichiesta, tipologia)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(Number(sessionId), nome, indirizzo, telefono, email, politicaNoShow, caparraRichiesta, tipologia);
 
+    revalidatePath('/');
+    revalidatePath('/cliente');
     return { success: true };
   } catch (error: any) {
     console.error('addRistorante error:', error.message);
@@ -122,6 +130,7 @@ export async function updateRistorante(
   const politicaNoShow = (formData.get('politicaNoShow') as string)?.trim() || null;
   const caparraRaw = formData.get('caparraRichiesta') as string;
   const caparraRichiesta = caparraRaw ? parseFloat(caparraRaw) : null;
+  const tipologia = (formData.get('tipologia') as string)?.trim() || 'Italiano';
 
   if (!nome || !indirizzo) {
     return { success: false, error: 'Nome e indirizzo sono obbligatori.' };
@@ -133,15 +142,17 @@ export async function updateRistorante(
     const result = db
       .prepare(
         `UPDATE Ristorante
-         SET nome = ?, indirizzo = ?, telefono = ?, email = ?, politicaNoShow = ?, caparraRichiesta = ?
+         SET nome = ?, indirizzo = ?, telefono = ?, email = ?, politicaNoShow = ?, caparraRichiesta = ?, tipologia = ?
          WHERE idRistorante = ? AND idGestoreRistorante = ?`
       )
-      .run(nome, indirizzo, telefono, email, politicaNoShow, caparraRichiesta, idRistorante, Number(sessionId));
+      .run(nome, indirizzo, telefono, email, politicaNoShow, caparraRichiesta, tipologia, idRistorante, Number(sessionId));
 
     if (result.changes === 0) {
       return { success: false, error: 'Ristorante non trovato o permesso negato.' };
     }
 
+    revalidatePath('/');
+    revalidatePath('/cliente');
     return { success: true };
   } catch (error: any) {
     console.error('updateRistorante error:', error.message);

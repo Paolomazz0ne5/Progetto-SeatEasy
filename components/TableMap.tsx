@@ -20,11 +20,13 @@ type Turno = {
 export default function TableMap({ 
   initialTavoli, 
   idRistorante, 
-  turni 
+  turni,
+  caparraRichiesta = 0
 }: { 
   initialTavoli: Tavolo[], 
   idRistorante: number,
-  turni: Turno[]
+  turni: Turno[],
+  caparraRichiesta?: number
 }) {
   const [tavoli, setTavoli] = useState<Tavolo[]>(initialTavoli);
   const [selectedTable, setSelectedTable] = useState<Tavolo | null>(null);
@@ -35,11 +37,18 @@ export default function TableMap({
     if (turni.length > 0 && selectedTurno === 0) {
       setSelectedTurno(turni[0].idTurno);
     }
-  }, [turni]);
+  }, [turni, selectedTurno]);
+
   const [numPersone, setNumPersone] = useState<number>(2);
   const [specialRequests, setSpecialRequests] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  
+  // Payment states
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
+  
   const router = useRouter();
 
   useEffect(() => {
@@ -56,7 +65,7 @@ export default function TableMap({
       }
     }
     updateAvailability();
-  }, [selectedTurno, selectedDate, idRistorante]);
+  }, [selectedTurno, selectedDate, idRistorante, selectedTable]);
 
   const handleTableClick = (tavolo: Tavolo) => {
     if (tavolo.stato === 'Libero') {
@@ -77,6 +86,12 @@ export default function TableMap({
       return;
     }
 
+    // Check if payment is required but not completed
+    if (caparraRichiesta > 0 && !paymentCompleted) {
+      setShowPaymentModal(true);
+      return;
+    }
+
     setLoading(true);
     try {
       const result = await createReservation({
@@ -85,7 +100,8 @@ export default function TableMap({
         dataPrenotazione: selectedDate,
         numeroPersone: numPersone,
         idTavolo: selectedTable.idTavolo,
-        noteCliente: specialRequests
+        noteCliente: specialRequests,
+        caparraPagata: paymentCompleted
       });
 
       if (result.success) {
@@ -103,12 +119,96 @@ export default function TableMap({
     }
   };
 
+  const simulatePayment = () => {
+    setPaymentLoading(true);
+    setTimeout(() => {
+      setPaymentLoading(false);
+      setPaymentCompleted(true);
+      setShowPaymentModal(false);
+    }, 2000);
+  };
+
   return (
     <div className="bg-white border border-[#F5CBA7] rounded-3xl p-6 md:p-8 shadow-md relative overflow-hidden">
       
       {message && (
         <div className={`absolute top-0 left-0 w-full p-4 text-center font-bold z-20 animate-in slide-in-from-top duration-300 ${message.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
           {message.text}
+        </div>
+      )}
+
+      {/* Simulated Payment Modal */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] p-8 md:p-10 max-w-md w-full shadow-2xl relative overflow-hidden border-2 border-[#F5CBA7]/30">
+            {/* Modal Header */}
+            <div className="flex flex-col items-center mb-8">
+              <div className="w-20 h-20 bg-[#FDF1E9] rounded-full flex items-center justify-center mb-4">
+                <svg className="w-10 h-10 text-[#D35400]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+              </div>
+              <h3 className="text-2xl font-black text-[#781D2D] text-center">Pagamento Caparra</h3>
+              <p className="text-[#D35400] font-bold text-center mt-1">Importo: €{caparraRichiesta.toFixed(2)}</p>
+            </div>
+
+            {/* Mock Credit Card Form */}
+            <div className="space-y-4 mb-8">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Numero Carta</label>
+                <div className="bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-gray-400 font-mono text-sm tracking-widest flex justify-between items-center">
+                  <span>•••• •••• •••• 4242</span>
+                  <div className="flex space-x-1">
+                    <div className="w-6 h-4 bg-red-400 rounded-sm opacity-50"></div>
+                    <div className="w-6 h-4 bg-yellow-400 rounded-sm opacity-50"></div>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Scadenza</label>
+                  <div className="bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-gray-400 font-bold text-sm">MM/AA</div>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">CVC</label>
+                  <div className="bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-gray-400 font-bold text-sm">•••</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Simulated Payment Actions */}
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={simulatePayment}
+                disabled={paymentLoading}
+                className="w-full bg-[#781D2D] text-white py-4 rounded-2xl font-black text-lg hover:bg-[#5f1723] transition-all flex items-center justify-center gap-3 shadow-lg shadow-[#781D2D]/20 disabled:opacity-70"
+              >
+                {paymentLoading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Elaborazione...
+                  </>
+                ) : (
+                  <>Paga €{caparraRichiesta.toFixed(2)}</>
+                )}
+              </button>
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                disabled={paymentLoading}
+                className="w-full bg-white text-[#781D2D] py-4 rounded-2xl font-bold text-sm hover:bg-gray-50 transition-all border-2 border-transparent hover:border-[#F5CBA7]/20"
+              >
+                Annulla
+              </button>
+            </div>
+            
+            {/* Security Note */}
+            <div className="mt-8 pt-6 border-t border-gray-50 flex items-center justify-center gap-2 text-gray-300">
+               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                 <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+               </svg>
+               <span className="text-[10px] font-bold uppercase tracking-widest">Pagamento 100% Sicuro - Simulazione Protetta</span>
+            </div>
+          </div>
         </div>
       )}
 
@@ -232,7 +332,7 @@ export default function TableMap({
                 onChange={(e) => setNumPersone(Number(e.target.value))}
                 className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-gray-900 font-bold focus:outline-none focus:ring-2 focus:ring-[#D35400] transition-all"
               >
-                {[...Array(selectedTable?.posti || 0)].map((_, i) => (
+                {Array.from({ length: selectedTable?.posti || 0 }).map((_, i) => (
                   <option key={i} value={i + 1}>{i + 1} {i === 0 ? 'Persona' : 'Persone'}</option>
                 ))}
               </select>
@@ -255,8 +355,19 @@ export default function TableMap({
           disabled={!selectedTable || loading}
           className={`w-full mt-8 py-5 rounded-[2rem] font-black text-xl shadow-xl transition-all transform active:scale-95 ${selectedTable && !loading ? 'bg-gradient-to-r from-[#D35400] via-[#E74C3C] to-[#781D2D] text-white hover:shadow-2xl hover:-translate-y-1' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
         >
-          {loading ? 'Elaborazione...' : `Conferma Prenotazione`}
+          {loading ? 'Elaborazione...' : 
+           (caparraRichiesta > 0 && !paymentCompleted) ? `Procedi al Pagamento (€${caparraRichiesta.toFixed(2)})` : 
+           `Conferma Prenotazione`}
         </button>
+        
+        {paymentCompleted && caparraRichiesta > 0 && (
+          <p className="text-center mt-3 text-green-600 font-bold text-sm animate-pulse flex items-center justify-center gap-2">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
+            Caparra di €{caparraRichiesta.toFixed(2)} pagata con successo!
+          </p>
+        )}
       </div>
     </div>
   );

@@ -43,6 +43,7 @@ db.exec(`
       email TEXT,
       politicaNoShow TEXT,
       caparraRichiesta REAL,
+      tipologia TEXT,
       FOREIGN KEY (idGestoreRistorante) REFERENCES GestoreRistorante(idAccount) ON DELETE RESTRICT
   );
 
@@ -138,8 +139,8 @@ if (count.count === 0) {
   db.prepare('INSERT INTO GestoreRistorante (idAccount, ruolo, PIN) VALUES (?, ?, ?)').run(resAdmin.lastInsertRowid, 'Admin', '1234');
 
   // 2. Creo il Ristorante
-  const insertRisto = db.prepare('INSERT INTO Ristorante (idGestoreRistorante, nome, indirizzo, politicaNoShow, caparraRichiesta) VALUES (?, ?, ?, ?, ?)');
-  const resRisto = insertRisto.run(resAdmin.lastInsertRowid, 'La Trattoria di Mario', 'Via Roma 1, Milano', 'Caparra trattenuta dopo 15 min di ritardo', 20.00);
+  const insertRisto = db.prepare('INSERT INTO Ristorante (idGestoreRistorante, nome, indirizzo, politicaNoShow, caparraRichiesta, tipologia) VALUES (?, ?, ?, ?, ?, ?)');
+  const resRisto = insertRisto.run(resAdmin.lastInsertRowid, 'La Trattoria di Mario', 'Via Roma 1, Milano', 'Caparra trattenuta dopo 15 min di ritardo', 20.00, 'Italiano');
   
   // 3. Creo una Sala e un Tavolo di prova per la Dashboard
   const insertSala = db.prepare('INSERT INTO Sala (idRistorante, nome, capacita, attiva) VALUES (?, ?, ?, ?)');
