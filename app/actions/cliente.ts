@@ -69,7 +69,8 @@ export async function createReservation(data: {
   dataPrenotazione: string,
   numeroPersone: number,
   idTavolo: number,
-  noteCliente?: string
+  noteCliente?: string,
+  caparraPagata?: boolean
 }) {
   const cookieStore = await cookies();
   const idCliente = cookieStore.get('seateasy_session')?.value;
@@ -81,9 +82,9 @@ export async function createReservation(data: {
     const transaction = db.transaction(() => {
       // 1. Create the reservation
       const res = db.prepare(`
-        INSERT INTO Prenotazione (idCliente, idTurno, dataPrenotazione, numeroPersone, stato, noteCliente)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(idCliente, data.idTurno, data.dataPrenotazione, data.numeroPersone, 'Confermata', data.noteCliente || null);
+        INSERT INTO Prenotazione (idCliente, idTurno, dataPrenotazione, numeroPersone, stato, noteCliente, caparraPagata)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(idCliente, data.idTurno, data.dataPrenotazione, data.numeroPersone, 'Confermata', data.noteCliente || null, data.caparraPagata ? 1 : 0);
 
       const idPrenotazione = res.lastInsertRowid;
 
@@ -171,6 +172,203 @@ export async function cancelReservation(idPrenotazione: number) {
   } catch (error) {
     console.error('cancelReservation error:', error);
     return { success: false, error: 'Impossibile annullare la prenotazione.' };
+  } finally {
+    db.close();
+  }
+}
+
+export async function getClientProfile() {
+  const cookieStore = await cookies();
+  const idCliente = cookieStore.get('seateasy_session')?.value;
+
+  if (!idCliente) return null;
+
+  const db = getDb();
+  try {
+    return db.prepare(`
+      SELECT A.*, C.richiesteSpeciali
+      FROM Account A
+      JOIN Cliente C ON A.idAccount = C.idAccount
+      WHERE A.idAccount = ?
+    `).get(idCliente) as any;
+  } finally {
+    db.close();
+  }
+}
+
+export async function updateClientProfile(data: {
+  nome: string,
+  cognome: string,
+  email: string,
+  telefono: string,
+  richiesteSpeciali?: string
+}) {
+  const cookieStore = await cookies();
+  const idCliente = cookieStore.get('seateasy_session')?.value;
+
+  if (!idCliente) return { success: false, error: 'Sessione non valida.' };
+
+  const db = getDb();
+  try {
+    const transaction = db.transaction(() => {
+      db.prepare(`
+        UPDATE Account
+        SET nome = ?, cognome = ?, email = ?, telefono = ?
+        WHERE idAccount = ?
+      `).run(data.nome, data.cognome, data.email, data.telefono, idCliente);
+
+      db.prepare(`
+        UPDATE Cliente
+        SET richiesteSpeciali = ?
+        WHERE idAccount = ?
+      `).run(data.richiesteSpeciali || null, idCliente);
+    });
+
+    transaction();
+    revalidatePath('/cliente/profilo');
+    return { success: true };
+  } catch (error: any) {
+    console.error('updateClientProfile error:', error);
+    if (error.message.includes('UNIQUE constraint failed: Account.email')) {
+      return { success: false, error: 'Questa email è già in uso.' };
+    }
+    return { success: false, error: 'Errore durante l\'aggiornamento del profilo.' };
+  } finally {
+    db.close();
+  }
+}
+
+export async function deleteClientAccount() {
+  const cookieStore = await cookies();
+  const idCliente = cookieStore.get('seateasy_session')?.value;
+
+  if (!idCliente) return { success: false, error: 'Sessione non valida.' };
+
+  const db = getDb();
+  try {
+    const transaction = db.transaction(() => {
+      // 1. Get reservation IDs
+      const reservations = db.prepare('SELECT idPrenotazione FROM Prenotazione WHERE idCliente = ?').all(idCliente) as { idPrenotazione: number }[];
+
+      for (const res of reservations) {
+        db.prepare('DELETE FROM OccupazioneTavolo WHERE idPrenotazione = ?').run(res.idPrenotazione);
+        db.prepare('DELETE FROM Pagamento WHERE idPrenotazione = ?').run(res.idPrenotazione);
+        db.prepare('DELETE FROM Notifica WHERE idPrenotazione = ?').run(res.idPrenotazione);
+        db.prepare('DELETE FROM Prenotazione WHERE idPrenotazione = ?').run(res.idPrenotazione);
+      }
+
+      // 2. Delete Cliente and Account
+      db.prepare('DELETE FROM Account WHERE idAccount = ?').run(idCliente);
+    });
+
+    transaction();
+
+    // Logout
+    cookieStore.delete('seateasy_session');
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('deleteClientAccount error:', error);
+    return { success: false, error: 'Errore durante l\'eliminazione dell\'account.' };
+  } finally {
+    db.close();
+  }
+}
+
+// ─── Reviews Actions ─────────────────────────────────────────────────────────
+
+export async function getRestaurantReviews(idRistorante: number) {
+  const db = getDb();
+  try {
+    return db.prepare(`
+      SELECT R.*, A.nome as clientName
+      FROM Recensione R
+      JOIN Account A ON R.idCliente = A.idAccount
+      WHERE R.idRistorante = ?
+      ORDER BY R.dataCreazione DESC
+    `).all(idRistorante) as any[];
+  } finally {
+    db.close();
+  }
+}
+
+export async function getUserReview(idRistorante: number) {
+  const cookieStore = await cookies();
+  const idCliente = cookieStore.get('seateasy_session')?.value;
+  if (!idCliente) return null;
+
+  const db = getDb();
+  try {
+    return db.prepare('SELECT * FROM Recensione WHERE idCliente = ? AND idRistorante = ?')
+             .get(idCliente, idRistorante) as any || null;
+  } finally {
+    db.close();
+  }
+}
+
+export async function addReview(idRistorante: number, punteggio: number, commento: string) {
+  const cookieStore = await cookies();
+  const idCliente = cookieStore.get('seateasy_session')?.value;
+  if (!idCliente) return { success: false, error: 'Devi effettuare il login.' };
+
+  const db = getDb();
+  try {
+    db.prepare(`
+      INSERT INTO Recensione (idCliente, idRistorante, punteggio, testo)
+      VALUES (?, ?, ?, ?)
+    `).run(idCliente, idRistorante, punteggio, commento);
+    
+    revalidatePath(`/cliente/ristorante/${idRistorante}`);
+    revalidatePath('/cliente/prenotazioni');
+    return { success: true };
+  } catch (error: any) {
+    if (error.message.includes('UNIQUE')) {
+      return { success: false, error: 'Hai già recensito questo ristorante.' };
+    }
+    return { success: false, error: error.message };
+  } finally {
+    db.close();
+  }
+}
+
+export async function updateReview(idRecensione: number, idRistorante: number, punteggio: number, commento: string) {
+  const cookieStore = await cookies();
+  const idCliente = cookieStore.get('seateasy_session')?.value;
+  if (!idCliente) return { success: false, error: 'Devi effettuare il login.' };
+
+  const db = getDb();
+  try {
+    const result = db.prepare(`
+      UPDATE Recensione 
+      SET punteggio = ?, testo = ?, dataCreazione = CURRENT_TIMESTAMP
+      WHERE idRecensione = ? AND idCliente = ?
+    `).run(punteggio, commento, idRecensione, idCliente);
+
+    if (result.changes === 0) return { success: false, error: 'Recensione non trovata o non autorizzato.' };
+    
+    revalidatePath(`/cliente/ristorante/${idRistorante}`);
+    revalidatePath('/cliente/prenotazioni');
+    return { success: true };
+  } finally {
+    db.close();
+  }
+}
+
+export async function deleteReview(idRecensione: number, idRistorante: number) {
+  const cookieStore = await cookies();
+  const idCliente = cookieStore.get('seateasy_session')?.value;
+  if (!idCliente) return { success: false, error: 'Devi effettuare il login.' };
+
+  const db = getDb();
+  try {
+    const result = db.prepare('DELETE FROM Recensione WHERE idRecensione = ? AND idCliente = ?')
+                     .run(idRecensione, idCliente);
+
+    if (result.changes === 0) return { success: false, error: 'Recensione non trovata.' };
+    
+    revalidatePath(`/cliente/ristorante/${idRistorante}`);
+    revalidatePath('/cliente/prenotazioni');
+    return { success: true };
   } finally {
     db.close();
   }

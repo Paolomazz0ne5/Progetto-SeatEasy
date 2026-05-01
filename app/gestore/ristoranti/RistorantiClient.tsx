@@ -122,6 +122,23 @@ function RistoranteFormFields({ defaults }: { defaults?: Partial<Ristorante> }) 
           />
         </div>
       </div>
+
+      {/* Tipologia */}
+      <div className="space-y-1.5">
+        <label className="block text-xs font-bold text-gray-700 ml-1">Tipologia Cucina</label>
+        <select
+          name="tipologia"
+          defaultValue={defaults?.tipologia ?? 'Italiano'}
+          className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-[#D35400] transition-shadow text-gray-900 text-sm appearance-none"
+        >
+          <option value="Italiano">Italiano</option>
+          <option value="Giapponese">Giapponese</option>
+          <option value="Francese">Francese</option>
+          <option value="Messicano">Messicano</option>
+          <option value="Cinese">Cinese</option>
+          <option value="Altro">Altro</option>
+        </select>
+      </div>
     </div>
   );
 }
@@ -193,8 +210,8 @@ function RistoranteModal({
               disabled={isPending}
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#D35400] to-[#781D2D] text-white text-sm font-bold rounded-xl hover:shadow-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              {isPending ? <Loader2 size={15} className="animate-spin" /> : null}
-              {isPending ? 'Salvataggio...' : submitLabel}
+              {isPending && <Loader2 size={15} className="animate-spin" />}
+              <span>{isPending ? 'Salvataggio...' : submitLabel}</span>
             </button>
           </div>
         </form>
