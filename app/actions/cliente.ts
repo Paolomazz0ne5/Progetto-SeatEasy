@@ -10,10 +10,23 @@ function getDb() {
   return new Database(dbPath);
 }
 
-export async function getRestaurants() {
+export async function getRestaurants(pax: number = 1) {
   const db = getDb();
   try {
-    return db.prepare('SELECT * FROM Ristorante').all() as any[];
+    const ristoranti = db.prepare('SELECT * FROM Ristorante').all() as any[];
+    // Per ogni ristorante, verifichiamo se c'è disponibilità (somma totale posti >= pax)
+    for (const r of ristoranti) {
+      const capacita = db.prepare(`
+        SELECT SUM(t.posti) as totale 
+        FROM Tavolo t
+        JOIN Sala s ON t.idSala = s.idSala
+        WHERE s.idRistorante = ?
+      `).get(r.idRistorante) as { totale: number | null };
+      
+      const totalePosti = capacita.totale || 0;
+      r.isDisponibile = totalePosti >= pax;
+    }
+    return ristoranti;
   } finally {
     db.close();
   }

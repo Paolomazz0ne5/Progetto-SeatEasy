@@ -5,8 +5,12 @@ import { cookies } from 'next/headers';
 import Navbar from '@/components/Navbar';
 import TableMap from '@/components/TableMap';
 
-export default async function RistoranteDettaglio({ params }: { params: Promise<{ id: string }> }) {
+export const dynamic = 'force-dynamic';
+export default async function RistoranteDettaglio({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ pax?: string }> }) {
   const { id } = await params;
+  const sParams = await searchParams;
+  const pax = parseInt(sParams?.pax || '1', 10);
+  
   const cookieStore = await cookies();
   const isLoggedIn = cookieStore.has('seateasy_session');
   
@@ -123,6 +127,7 @@ export default async function RistoranteDettaglio({ params }: { params: Promise<
                initialTavoli={tavoliBase} 
                idRistorante={Number(id)} 
                turni={turni} 
+               pax={pax}
              />
           </section>
 

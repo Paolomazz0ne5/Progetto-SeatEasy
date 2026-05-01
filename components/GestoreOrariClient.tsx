@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Clock, Plus, Trash2, Edit, Save, Users, X } from 'lucide-react';
+import { Clock, Plus, Trash2, Edit, Save, X } from 'lucide-react';
 import { createOrario, updateOrario, deleteOrario } from '@/app/actions/orari';
 
 type Orario = {
@@ -12,7 +12,7 @@ type Orario = {
   durataMediaServizio: number;
 };
 
-export default function GestoreOrariClient({ initialOrari }: { initialOrari: Orario[] }) {
+export default function GestoreOrariClient({ initialOrari, idRistorante }: { initialOrari: Orario[], idRistorante: number }) {
   const [orari] = useState<Orario[]>(initialOrari);
   const [loading, setLoading] = useState(false);
 
@@ -20,15 +20,6 @@ export default function GestoreOrariClient({ initialOrari }: { initialOrari: Ora
   const [editOrarioId, setEditOrarioId] = useState<number | null>(null);
   const [orarioForm, setOrarioForm] = useState({ nome: '', oraInizio: '', oraFine: '' });
   const [showAddOrario, setShowAddOrario] = useState(false);
-
-  // Turno Modal State
-  const [turnoModal, setTurnoModal] = useState<{ isOpen: boolean, idOrario: number | null, idTurno: number | null, nomeTurno: string, maxP: number }>({
-    isOpen: false,
-    idOrario: null,
-    idTurno: null,
-    nomeTurno: '',
-    maxP: 20
-  });
 
   // --------------
   // Fasce Actions
@@ -38,7 +29,7 @@ export default function GestoreOrariClient({ initialOrari }: { initialOrari: Ora
     if (editOrarioId) {
       await updateOrario(editOrarioId, orarioForm.nome, orarioForm.oraInizio, orarioForm.oraFine, 0);
     } else {
-      await createOrario(orarioForm.nome, orarioForm.oraInizio, orarioForm.oraFine, 0);
+      await createOrario(idRistorante, orarioForm.nome, orarioForm.oraInizio, orarioForm.oraFine, 0);
     }
     window.location.reload();
   };

@@ -27,13 +27,19 @@ export async function ensureNomeOrarioColumn() {
 }
 
 // ORARI (FASCE)
-export async function createOrario(nome: string, oraInizio: string, oraFine: string, durataMediaServizio: number) {
+export async function createOrario(idRistorante: number, nome: string, oraInizio: string, oraFine: string, durataMediaServizio: number) {
   const db = getDb();
   try {
-    db.prepare(`
+    const info = db.prepare(`
       INSERT INTO Orario (idRistorante, nome, oraInizio, oraFine, durataMediaServizio)
       VALUES (?, ?, ?, ?, ?)
-    `).run(1, nome, oraInizio, oraFine, durataMediaServizio); // Assumes idRistorante=1
+    `).run(idRistorante, nome, oraInizio, oraFine, durataMediaServizio);
+    
+    // Automatically create a default Turno for this Orario so it shows up in bookings
+    db.prepare(`
+      INSERT INTO Turno (idOrario, nomeTurno, maxPrenotazioni)
+      VALUES (?, ?, ?)
+    `).run(info.lastInsertRowid, nome, 20);
     
     revalidatePath('/gestore/orari');
     return { success: true };

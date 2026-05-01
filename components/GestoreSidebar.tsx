@@ -1,24 +1,27 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { LayoutDashboard, ArrowLeft, Grid, Clock, MessageSquareHeart, User, LogOut } from 'lucide-react';
 import { logoutAction } from '@/app/actions/auth';
 import Logo from '@/components/Logo';
 
-export default function GestoreSidebar() {
+function SidebarContent() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const ristoranteId = searchParams.get('ristorante');
+  const qs = ristoranteId ? `?ristorante=${ristoranteId}` : '';
 
   const handleLogout = async () => {
     await logoutAction();
   };
 
   const navItems = [
-    { name: 'Dashboard', href: '/gestore/dashboard', icon: LayoutDashboard },
-    { name: 'Gestione Layout', href: '/gestore/layout', icon: Grid },
-    { name: 'Orari e Turni', href: '/gestore/orari', icon: Clock },
-    { name: 'Relazioni Clienti', href: '/gestore/relazioni', icon: MessageSquareHeart },
+    { name: 'Dashboard', href: `/gestore/dashboard${qs}`, icon: LayoutDashboard },
+    { name: 'Gestione Layout', href: `/gestore/layout${qs}`, icon: Grid },
+    { name: 'Orari e Turni', href: `/gestore/orari${qs}`, icon: Clock },
+    { name: 'Relazioni Clienti', href: `/gestore/relazioni${qs}`, icon: MessageSquareHeart },
   ];
 
   return (
@@ -85,5 +88,13 @@ export default function GestoreSidebar() {
       </div>
 
     </div>
+  );
+}
+
+export default function GestoreSidebar() {
+  return (
+    <Suspense fallback={<div className="w-64 min-h-screen bg-white shadow-xl border-r border-[#F5CBA7]/40 z-50 relative animate-pulse"></div>}>
+      <SidebarContent />
+    </Suspense>
   );
 }

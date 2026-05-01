@@ -4,18 +4,22 @@ import { getRestaurants } from '@/app/actions/cliente';
 import { cookies } from 'next/headers';
 import RestaurantList from './RestaurantList';
 
-export default async function ClienteDashboard() {
+export default async function ClienteDashboard(props: { searchParams: Promise<{ pax?: string }> }) {
   const cookieStore = await cookies();
   const isLoggedIn = cookieStore.has('seateasy_session');
-  const ristoranti = await getRestaurants();
+  
+  const searchParams = await props.searchParams;
+  const pax = parseInt(searchParams?.pax || '1', 10);
+  
+  const ristoranti = await getRestaurants(pax);
 
   return (
     <div className="min-h-screen bg-[#FFFDFB] font-sans">
       <Navbar isLoggedIn={isLoggedIn} />
       
       <main>
-        <Hero />
-        <RestaurantList initialRestaurants={ristoranti} />
+        <Hero initialPax={pax} />
+        <RestaurantList initialRestaurants={ristoranti} pax={pax} />
       </main>
 
       <footer className="bg-[#781D2D] text-[#F5CBA7] py-16">

@@ -19,7 +19,7 @@ type Sala = {
   tavoli: Tavolo[];
 };
 
-export default function GestoreLayoutClient({ initialSale }: { initialSale: Sala[] }) {
+export default function GestoreLayoutClient({ initialSale, idRistorante }: { initialSale: Sala[], idRistorante: number }) {
   const [sale, setSale] = useState<Sala[]>(initialSale);
   const [activeSalaId, setActiveSalaId] = useState<number | null>(initialSale.length > 0 ? initialSale[0].idSala : null);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -43,7 +43,7 @@ export default function GestoreLayoutClient({ initialSale }: { initialSale: Sala
   const handleCreateSala = async () => {
     if (!newSalaName.trim()) return;
     setLoading(true);
-    await createSala(newSalaName);
+    await createSala(newSalaName, idRistorante);
     // Hard refresh state could be done by router.refresh(), 
     // but Next 13+ App Router revalidatePath does this.
     // However, our passed prop will be updated from server.

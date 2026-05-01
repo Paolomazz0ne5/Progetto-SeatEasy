@@ -20,11 +20,13 @@ type Turno = {
 export default function TableMap({ 
   initialTavoli, 
   idRistorante, 
-  turni 
+  turni,
+  pax
 }: { 
   initialTavoli: Tavolo[], 
   idRistorante: number,
-  turni: Turno[]
+  turni: Turno[],
+  pax?: number
 }) {
   const [tavoli, setTavoli] = useState<Tavolo[]>(initialTavoli);
   const [selectedTable, setSelectedTable] = useState<Tavolo | null>(null);
@@ -36,7 +38,7 @@ export default function TableMap({
       setSelectedTurno(turni[0].idTurno);
     }
   }, [turni]);
-  const [numPersone, setNumPersone] = useState<number>(2);
+  const [numPersone, setNumPersone] = useState<number>(pax || 2);
   const [specialRequests, setSpecialRequests] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -49,20 +51,26 @@ export default function TableMap({
         const updated = await getAvailableTables(idRistorante, selectedDate, selectedTurno);
         setTavoli(updated);
         setLoading(false);
-        // Reset selected table if it's now occupied
-        if (selectedTable && updated.find(t => t.idTavolo === selectedTable.idTavolo)?.stato !== 'Libero') {
-          setSelectedTable(null);
+        // Reset selected table if it's now occupied or too small
+        if (selectedTable) {
+          const t = updated.find(t => t.idTavolo === selectedTable.idTavolo);
+          if (!t || t.stato !== 'Libero' || (pax && t.posti < pax)) {
+            setSelectedTable(null);
+          }
         }
       }
     }
     updateAvailability();
-  }, [selectedTurno, selectedDate, idRistorante]);
+  }, [selectedTurno, selectedDate, idRistorante, pax]);
 
   const handleTableClick = (tavolo: Tavolo) => {
-    if (tavolo.stato === 'Libero') {
+    // Non permette di selezionare tavoli troppo piccoli per gli ospiti richiesti
+    if (tavolo.stato === 'Libero' && (!pax || tavolo.posti >= pax)) {
       setSelectedTable(tavolo);
       if (numPersone > tavolo.posti) {
         setNumPersone(tavolo.posti);
+      } else if (pax && numPersone < pax) {
+        setNumPersone(pax);
       }
     }
   };
@@ -150,18 +158,24 @@ export default function TableMap({
           <div className="md:col-span-9">
              <label className="block text-[10px] font-black text-[#781D2D] uppercase tracking-widest mb-3 ml-1">Seleziona l'Orario</label>
              <div className="flex flex-wrap gap-2">
-               {turni.map(t => (
-                 <button
-                   key={t.idTurno}
-                   type="button"
-                   onClick={() => setSelectedTurno(t.idTurno)}
-                   className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border-2 ${selectedTurno === t.idTurno 
-                      ? 'bg-[#781D2D] border-[#781D2D] text-white shadow-md' 
-                      : 'bg-white border-[#F5CBA7]/30 text-[#781D2D] hover:border-[#F5CBA7]'}`}
-                 >
-                   {t.nomeTurno}
-                 </button>
-               ))}
+               {turni.length === 0 ? (
+                 <div className="text-sm font-bold text-red-500 bg-red-50 p-3 rounded-xl border border-red-100">
+                   Nessun orario di servizio configurato per questo ristorante.
+                 </div>
+               ) : (
+                 turni.map(t => (
+                   <button
+                     key={t.idTurno}
+                     type="button"
+                     onClick={() => setSelectedTurno(t.idTurno)}
+                     className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border-2 ${selectedTurno === t.idTurno 
+                        ? 'bg-[#781D2D] border-[#781D2D] text-white shadow-md' 
+                        : 'bg-white border-[#F5CBA7]/30 text-[#781D2D] hover:border-[#F5CBA7]'}`}
+                   >
+                     {t.nomeTurno}
+                   </button>
+                 ))
+               )}
              </div>
           </div>
         </div>
@@ -171,13 +185,15 @@ export default function TableMap({
       <div className={`bg-[#FFFDFB] border-2 border-dashed border-[#F5CBA7] rounded-2xl p-6 md:p-10 mb-8 relative transition-opacity duration-300 ${loading ? 'opacity-50' : 'opacity-100'}`}>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-8 place-items-center">
           {tavoli.map((tavolo) => {
-            const isLibero = tavolo.stato === 'Libero';
+            const isTroppoPiccolo = pax ? tavolo.posti < pax : false;
+            const isLibero = tavolo.stato === 'Libero' && !isTroppoPiccolo;
             const isOccupato = tavolo.stato === 'Occupato';
             const isSelected = selectedTable?.idTavolo === tavolo.idTavolo;
 
             let bgColor = "bg-gray-100 border-gray-200 text-gray-400";
             if (isLibero) bgColor = "bg-white border-[#F5CBA7] text-[#781D2D] hover:border-[#D35400] hover:shadow-lg cursor-pointer";
             if (isOccupato) bgColor = "bg-red-50 border-red-200 text-red-300 cursor-not-allowed";
+            if (isTroppoPiccolo && tavolo.stato !== 'Occupato') bgColor = "bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed opacity-50";
             if (isSelected) bgColor = "bg-gradient-to-br from-[#D35400] to-[#781D2D] border-[#781D2D] text-white shadow-xl scale-110 ring-4 ring-[#F5CBA7]";
 
             return (

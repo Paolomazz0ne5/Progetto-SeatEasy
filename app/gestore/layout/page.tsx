@@ -4,14 +4,25 @@ import GestoreLayoutClient from '@/components/GestoreLayoutClient';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
+import { redirect } from 'next/navigation';
+
 export const dynamic = 'force-dynamic';
 
-export default async function GestoreLayoutPage() {
+export default async function GestoreLayoutPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ristorante?: string }>;
+}) {
+  const params = await searchParams;
+  const ristoranteId = params.ristorante ? parseInt(params.ristorante, 10) : NaN;
+
+  if (isNaN(ristoranteId)) redirect('/gestore/ristoranti');
+
   const dbPath = path.resolve(process.cwd(), 'database.db');
   const db = new Database(dbPath);
 
-  // Fetch all Sale for the ristorante (assumed ID 1)
-  const sale = db.prepare('SELECT * FROM Sala WHERE idRistorante = 1 ORDER BY idSala ASC').all() as any[];
+  // Fetch all Sale for the ristorante
+  const sale = db.prepare('SELECT * FROM Sala WHERE idRistorante = ? ORDER BY idSala ASC').all(ristoranteId) as any[];
   
   // Attach tavoli to each Sala
   for (const s of sale) {
@@ -48,7 +59,7 @@ export default async function GestoreLayoutPage() {
         </div>
 
         {/* Client Interactive Area */}
-        <GestoreLayoutClient initialSale={sale} />
+        <GestoreLayoutClient initialSale={sale} idRistorante={ristoranteId} />
         
       </div>
     </>

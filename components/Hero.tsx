@@ -1,6 +1,19 @@
-import React from 'react';
+'use client';
 
-export default function Hero() {
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function Hero({ initialPax = 1 }: { initialPax?: number }) {
+  const [pax, setPax] = useState(initialPax);
+  const router = useRouter();
+
+  const handleSearch = () => {
+    router.push(`?pax=${pax}`);
+    setTimeout(() => {
+      document.getElementById('ristoranti-list')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
   return (
     <div className="relative pt-32 pb-20 lg:pt-40 lg:pb-28 overflow-hidden bg-[#FDF1E9]">
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
@@ -16,7 +29,7 @@ export default function Hero() {
         {/* Search Module */}
         <div className="mt-10 max-w-4xl mx-auto">
           <div className="bg-white/80 backdrop-blur-md rounded-2xl p-4 shadow-xl border border-white/50 md:p-6 transition-all hover:bg-white/95">
-            <form className="flex flex-col md:flex-row gap-4 items-end">
+            <form className="flex flex-col md:flex-row gap-4 items-end" onSubmit={(e) => { e.preventDefault(); handleSearch(); }}>
               
               <div className="w-full md:w-1/3">
                 <label htmlFor="date" className="block text-sm font-semibold text-[#781D2D] mb-1.5 ml-1">
@@ -46,27 +59,21 @@ export default function Hero() {
                       <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
                     </svg>
                   </div>
-                  <select
+                  <input
+                    type="number"
                     id="people"
-                    className="block w-full pl-10 pr-3 py-3 border-2 border-transparent bg-[#FDF1E9]/50 rounded-xl leading-5 text-[#781D2D] focus:outline-none focus:bg-white focus:border-[#E74C3C]/50 focus:ring-4 focus:ring-[#E74C3C]/10 transition-all sm:text-sm font-medium appearance-none cursor-pointer"
-                  >
-                    {[...Array(10)].map((_, i) => (
-                      <option key={i} value={i + 1}>{i + 1} {i === 0 ? 'Persona' : 'Persone'}</option>
-                    ))}
-                    <option value="11+">11+ Persone</option>
-                  </select>
-                  {/* Custom arrow */}
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-[#781D2D]/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
+                    min="1"
+                    value={pax || ''}
+                    onChange={(e) => setPax(parseInt(e.target.value) || 0)}
+                    placeholder="Numero persone"
+                    className="block w-full pl-10 pr-3 py-3 border-2 border-transparent bg-[#FDF1E9]/50 rounded-xl leading-5 text-[#781D2D] focus:outline-none focus:bg-white focus:border-[#E74C3C]/50 focus:ring-4 focus:ring-[#E74C3C]/10 transition-all sm:text-sm font-medium"
+                  />
                 </div>
               </div>
 
               <div className="w-full md:w-1/3">
                  <button
-                   type="button"
+                   type="submit"
                    className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-bold rounded-xl text-white bg-gradient-to-r from-[#D35400] to-[#E74C3C] hover:from-[#c0392b] hover:to-[#c0392b] md:py-[14px] md:text-lg md:px-10 transition-all shadow-lg hover:shadow-[#E74C3C]/40 transform hover:-translate-y-0.5"
                  >
                    Vedi Disponibilità

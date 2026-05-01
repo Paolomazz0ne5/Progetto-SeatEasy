@@ -29,6 +29,12 @@ type DayKey = 'Tutti' | 'Lunedì' | 'Martedì' | 'Mercoledì' | 'Giovedì' | 'Ve
 // ─── Mock Data Generator ─────────────────────────────────────────────────────
 
 function generateMockData(): TimeSlotData[] {
+  let seed = 12345;
+  function random() {
+    const x = Math.sin(seed++) * 10000;
+    return x - Math.floor(x);
+  }
+
   const giorni: DayKey[] = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
   const fascePranzo = ['12:00', '12:30', '13:00', '13:30', '14:00', '14:30'];
   const fasceCena   = ['19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00'];
@@ -76,12 +82,12 @@ function generateMockData(): TimeSlotData[] {
     for (const fascia of fascePranzo) {
       const peak = pranzoPeak[fascia];
       const base = Math.round(maxPranzo * mult * peak);
-      const jitter = Math.round((Math.random() - 0.5) * 6);
+      const jitter = Math.round((random() - 0.5) * 6);
       const affluenza = Math.max(2, base + jitter);
 
       const [dMin, dMax] = durationConfig[giorno].pranzo;
       // Duration scales slightly with peak (busier → slightly longer)
-      const durataMedia = Math.round(dMin + (dMax - dMin) * peak + (Math.random() - 0.5) * 4);
+      const durataMedia = Math.round(dMin + (dMax - dMin) * peak + (random() - 0.5) * 4);
 
       data.push({ fascia, giorno, affluenza, durataMedia, servizio: 'pranzo' });
     }
@@ -90,11 +96,11 @@ function generateMockData(): TimeSlotData[] {
     for (const fascia of fasceCena) {
       const peak = cenaPeak[fascia];
       const base = Math.round(maxCena * mult * peak);
-      const jitter = Math.round((Math.random() - 0.5) * 8);
+      const jitter = Math.round((random() - 0.5) * 8);
       const affluenza = Math.max(1, base + jitter);
 
       const [dMin, dMax] = durationConfig[giorno].cena;
-      const durataMedia = Math.round(dMin + (dMax - dMin) * peak + (Math.random() - 0.5) * 5);
+      const durataMedia = Math.round(dMin + (dMax - dMin) * peak + (random() - 0.5) * 5);
 
       data.push({ fascia, giorno, affluenza, durataMedia, servizio: 'cena' });
     }

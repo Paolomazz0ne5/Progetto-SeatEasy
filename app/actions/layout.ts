@@ -10,11 +10,10 @@ function getDb() {
 }
 
 // SALE
-export async function createSala(nome: string) {
+export async function createSala(nome: string, idRistorante: number) {
   const db = getDb();
   try {
-    // Hardcoding idRistorante = 1 for the scope of this demo
-    db.prepare('INSERT INTO Sala (idRistorante, nome, capacita, attiva) VALUES (?, ?, ?, ?)').run(1, nome, 0, 1);
+    db.prepare('INSERT INTO Sala (idRistorante, nome, capacita, attiva) VALUES (?, ?, ?, ?)').run(idRistorante, nome, 0, 1);
     revalidatePath('/gestore/layout');
     return { success: true };
   } catch (error: any) {

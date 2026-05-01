@@ -6,9 +6,20 @@ import GestoreOrariClient from '@/components/GestoreOrariClient';
 import AffluenzaChart from '@/components/AffluenzaChart';
 import { ensureNomeOrarioColumn } from '@/app/actions/orari';
 
+import { redirect } from 'next/navigation';
+
 export const dynamic = 'force-dynamic';
 
-export default async function GestoreOrariPage() {
+export default async function GestoreOrariPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ristorante?: string }>;
+}) {
+  const params = await searchParams;
+  const ristoranteId = params.ristorante ? parseInt(params.ristorante, 10) : NaN;
+
+  if (isNaN(ristoranteId)) redirect('/gestore/ristoranti');
+
   // Ensure the DB column is patched
   await ensureNomeOrarioColumn();
 
@@ -16,7 +27,7 @@ export default async function GestoreOrariPage() {
   const db = new Database(dbPath);
 
   // Fetch all Orari
-  const orari = db.prepare('SELECT * FROM Orario WHERE idRistorante = 1 ORDER BY oraInizio ASC').all() as any[];
+  const orari = db.prepare('SELECT * FROM Orario WHERE idRistorante = ? ORDER BY oraInizio ASC').all(ristoranteId) as any[];
 
   // Attach turni
   for (const o of orari) {
@@ -56,7 +67,7 @@ export default async function GestoreOrariPage() {
         </div>
 
         {/* Client Interactive Area */}
-        <GestoreOrariClient initialOrari={orari} />
+        <GestoreOrariClient initialOrari={orari} idRistorante={ristoranteId} />
         
       </div>
     </>
