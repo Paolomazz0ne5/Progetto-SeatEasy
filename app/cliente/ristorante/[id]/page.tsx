@@ -125,21 +125,13 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
 
           {/* Interactive Table Map Section */}
           <section id="prenota" className="scroll-mt-32">
-<<<<<<< HEAD
-             <TableMap 
-               initialTavoli={tavoliBase} 
-               idRistorante={Number(id)} 
-               turni={turni} 
-               pax={pax}
-             />
-=======
             <TableMap
               initialTavoli={tavoliBase}
               idRistorante={Number(id)}
               turni={turni}
+              pax={pax}
               caparraRichiesta={Number(ristorante.caparraRichiesta || 0)}
             />
->>>>>>> 78853fd6824c354bfe143ee29c0666cad1a2b602
           </section>
 
           {/* Sezione Recensioni */}

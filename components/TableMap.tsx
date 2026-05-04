@@ -20,11 +20,15 @@ type Turno = {
 export default function TableMap({ 
   initialTavoli, 
   idRistorante, 
-  turni 
+  turni,
+  pax,
+  caparraRichiesta = 0
 }: { 
   initialTavoli: Tavolo[], 
   idRistorante: number,
-  turni: Turno[]
+  turni: Turno[],
+  pax?: number,
+  caparraRichiesta?: number
 }) {
   const [tavoli, setTavoli] = useState<Tavolo[]>(initialTavoli);
   const [selectedTable, setSelectedTable] = useState<Tavolo | null>(null);
