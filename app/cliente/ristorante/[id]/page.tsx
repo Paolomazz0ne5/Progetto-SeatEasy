@@ -10,6 +10,7 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
   const { id } = await params;
   const sParams = await searchParams;
   const pax = parseInt(sParams?.pax || '1', 10);
+  const data = sParams?.data || new Date().toISOString().split('T')[0];
   
   const cookieStore = await cookies();
   const isLoggedIn = cookieStore.has('seateasy_session');
@@ -130,6 +131,7 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
               idRistorante={Number(id)}
               turni={turni}
               pax={pax}
+              initialDate={data}
               caparraRichiesta={Number(ristorante.caparraRichiesta || 0)}
             />
           </section>

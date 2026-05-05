@@ -24,19 +24,21 @@ export default function TableMap({
   idRistorante,
   turni,
   pax,
+  initialDate,
   caparraRichiesta = 0,
 }: {
   initialTavoli: Tavolo[];
   idRistorante: number;
   turni: Turno[];
   pax?: number;
+  initialDate?: string;
   caparraRichiesta?: number;
 }) {
   const [tavoli, setTavoli] = useState<Tavolo[]>(initialTavoli);
   const [selectedTavoli, setSelectedTavoli] = useState<Tavolo[]>([]);
   const [selectedTurno, setSelectedTurno] = useState<number>(0);
   const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
+    initialDate || new Date().toISOString().split('T')[0]
   );
   const [specialRequests, setSpecialRequests] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -76,6 +78,7 @@ export default function TableMap({
   // Derived values
   const selectedIds = new Set(selectedTavoli.map(t => t.idTavolo));
   const totalPostiSelezione = selectedTavoli.reduce((s, t) => s + t.posti, 0);
+  const isFulfilled = pax !== undefined && totalPostiSelezione >= pax;
   const canBook = selectedTavoli.length > 0 && (!pax || totalPostiSelezione >= pax);
 
   const showMinToast = (text: string) => {
@@ -88,6 +91,12 @@ export default function TableMap({
 
     setSelectedTavoli(prev => {
       const isAlreadySelected = prev.some(t => t.idTavolo === tavolo.idTavolo);
+
+      // Blocco a Soddisfacimento
+      if (isFulfilled && !isAlreadySelected) {
+        setTimeout(() => showMinToast("Hai già selezionato un numero di posti sufficiente per il tuo gruppo. Rimuovi un tavolo se vuoi sceglierne un altro."), 0);
+        return prev;
+      }
 
       // Deselect
       if (isAlreadySelected) {
@@ -275,40 +284,47 @@ export default function TableMap({
           </div>
         </div>
 
-        {/* Date & Turno selector */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end bg-[#FDF1E9]/30 p-6 rounded-[2rem] border border-[#F5CBA7]/20">
-          <div className="md:col-span-3">
-            <label className="block text-[10px] font-black text-[#781D2D] uppercase tracking-widest mb-1.5 ml-1">Data</label>
-            <input
-              type="date"
-              value={selectedDate}
-              min={new Date().toISOString().split('T')[0]}
-              onChange={(e) => { setSelectedDate(e.target.value); setSelectedTavoli([]); }}
-              className="w-full bg-[#FDF1E9] border border-[#F5CBA7]/50 rounded-xl px-4 py-3 text-sm font-bold text-[#781D2D] focus:outline-none focus:ring-2 focus:ring-[#D35400]"
-            />
-          </div>
-          <div className="md:col-span-9">
-            <label className="block text-[10px] font-black text-[#781D2D] uppercase tracking-widest mb-3 ml-1">Seleziona l&apos;Orario</label>
-            <div className="flex flex-wrap gap-2">
-              {turni.length === 0 ? (
-                <div className="text-sm font-bold text-red-500 bg-red-50 p-3 rounded-xl border border-red-100">
-                  Nessun orario di servizio configurato per questo ristorante.
-                </div>
-              ) : (
-                turni.map(t => (
-                  <button
-                    key={t.idTurno}
-                    type="button"
-                    onClick={() => { setSelectedTurno(t.idTurno); setSelectedTavoli([]); }}
-                    className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border-2 ${selectedTurno === t.idTurno
-                      ? 'bg-[#781D2D] border-[#781D2D] text-white shadow-md'
-                      : 'bg-white border-[#F5CBA7]/30 text-[#781D2D] hover:border-[#F5CBA7]'}`}
-                  >
-                    {t.nomeTurno}
-                  </button>
-                ))
-              )}
+        {/* Read-only reservation summary */}
+        <div className="flex flex-col md:flex-row items-center gap-6 bg-[#FDF1E9]/50 px-6 py-4 rounded-3xl border border-[#F5CBA7]/30 mb-8">
+          <div className="flex items-center gap-3 text-[#781D2D]">
+            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-xl">📅</div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Data selezionata</p>
+              <p className="font-bold">{new Date(selectedDate).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
             </div>
+          </div>
+          <div className="hidden md:block w-px h-10 bg-[#F5CBA7]/30"></div>
+          <div className="flex items-center gap-3 text-[#781D2D]">
+            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-xl">👥</div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Numero Ospiti</p>
+              <p className="font-bold">{pax} {pax === 1 ? 'persona' : 'persone'}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Turno selector (Remaining Interactive) */}
+        <div className="bg-[#FDF1E9]/30 p-6 rounded-[2rem] border border-[#F5CBA7]/20">
+          <label className="block text-[10px] font-black text-[#781D2D] uppercase tracking-widest mb-3 ml-1">Seleziona l&apos;Orario</label>
+          <div className="flex flex-wrap gap-2">
+            {turni.length === 0 ? (
+              <div className="text-sm font-bold text-red-500 bg-red-50 p-3 rounded-xl border border-red-100">
+                Nessun orario di servizio configurato per questo ristorante.
+              </div>
+            ) : (
+              turni.map(t => (
+                <button
+                  key={t.idTurno}
+                  type="button"
+                  onClick={() => { setSelectedTurno(t.idTurno); setSelectedTavoli([]); }}
+                  className={`px-6 py-3 rounded-xl text-sm font-bold transition-all border-2 ${selectedTurno === t.idTurno
+                    ? 'bg-[#781D2D] border-[#781D2D] text-white shadow-md'
+                    : 'bg-white border-[#F5CBA7]/30 text-[#781D2D] hover:border-[#F5CBA7]'}`}
+                >
+                  {t.nomeTurno}
+                </button>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -327,12 +343,16 @@ export default function TableMap({
             const isSelected = selectedIds.has(tavolo.idTavolo);
             // Check if pax respects the minimum for this table
             const belowMinimum = isLibero && pax !== undefined && pax < (tavolo.postiMinimi ?? 1);
+            // Blocco a Soddisfacimento
+            const isBlockedByFulfillment = isFulfilled && isLibero && !isSelected;
 
             let cls = '';
             if (isOccupato) {
               cls = 'bg-red-50 border-red-200 text-red-300 cursor-not-allowed';
             } else if (!isLibero) {
               cls = 'bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed opacity-50';
+            } else if (isBlockedByFulfillment) {
+              cls = 'bg-white border-[#F5CBA7] text-[#781D2D] opacity-50 cursor-not-allowed';
             } else if (belowMinimum) {
               cls = 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed opacity-60';
             } else if (isSelected) {

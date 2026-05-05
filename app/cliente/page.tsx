@@ -10,6 +10,7 @@ export default async function ClienteDashboard(props: { searchParams: Promise<{ 
   
   const searchParams = await props.searchParams;
   const pax = parseInt(searchParams?.pax || '1', 10);
+  const data = searchParams?.data || new Date().toISOString().split('T')[0];
   
   const ristoranti = await getRestaurants(pax);
 
@@ -18,8 +19,8 @@ export default async function ClienteDashboard(props: { searchParams: Promise<{ 
       <Navbar isLoggedIn={isLoggedIn} />
       
       <main>
-        <Hero initialPax={pax} />
-        <RestaurantList initialRestaurants={ristoranti} pax={pax} />
+        <Hero initialPax={pax} initialDate={data} />
+        <RestaurantList initialRestaurants={ristoranti} pax={pax} date={data} />
       </main>
 
       <footer className="bg-[#781D2D] text-[#F5CBA7] py-16">

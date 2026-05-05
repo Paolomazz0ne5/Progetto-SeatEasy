@@ -42,8 +42,23 @@ function SidebarContent() {
         <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 ml-2">Menu Principale</span>
         
         {navItems.map(item => {
-          const isActive = pathname.startsWith(item.href);
+          const isActive = pathname.startsWith(item.href.split('?')[0]);
           const Icon = item.icon;
+          const isDisabled = !ristoranteId;
+
+          if (isDisabled) {
+            return (
+              <div 
+                key={item.name} 
+                className="flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-gray-300 cursor-not-allowed opacity-50 select-none"
+                title="Seleziona un ristorante per sbloccare questa sezione"
+              >
+                <Icon size={20} />
+                {item.name}
+              </div>
+            );
+          }
+
           return (
             <Link 
               key={item.name} 

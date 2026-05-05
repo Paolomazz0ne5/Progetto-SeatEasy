@@ -3,12 +3,13 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function Hero({ initialPax = 1 }: { initialPax?: number }) {
+export default function Hero({ initialPax = 1, initialDate }: { initialPax?: number, initialDate?: string }) {
   const [pax, setPax] = useState(initialPax);
+  const [date, setDate] = useState(initialDate || new Date().toISOString().split('T')[0]);
   const router = useRouter();
 
   const handleSearch = () => {
-    router.push(`?pax=${pax}`);
+    router.push(`?pax=${pax}&data=${date}`);
     setTimeout(() => {
       document.getElementById('ristoranti-list')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
@@ -44,6 +45,9 @@ export default function Hero({ initialPax = 1 }: { initialPax?: number }) {
                   <input
                     type="date"
                     id="date"
+                    value={date}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setDate(e.target.value)}
                     className="block w-full pl-10 pr-3 py-3 border-2 border-transparent bg-[#FDF1E9]/50 rounded-xl leading-5 text-[#781D2D] focus:outline-none focus:bg-white focus:border-[#E74C3C]/50 focus:ring-4 focus:ring-[#E74C3C]/10 transition-all sm:text-sm font-medium"
                   />
                 </div>

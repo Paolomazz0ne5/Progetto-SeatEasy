@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 
-export default function RestaurantList({ initialRestaurants, pax = 1 }: { initialRestaurants: any[], pax?: number }) {
+export default function RestaurantList({ initialRestaurants, pax = 1, date }: { initialRestaurants: any[], pax?: number, date?: string }) {
   const [filter, setFilter] = useState('Tutti');
 
   const filteredRestaurants = filter === 'Tutti' 
@@ -104,7 +104,7 @@ export default function RestaurantList({ initialRestaurants, pax = 1 }: { initia
           return risto.isDisponibile ? (
             <Link 
               key={risto.idRistorante} 
-              href={`/cliente/ristorante/${risto.idRistorante}?pax=${pax}`}
+              href={`/cliente/ristorante/${risto.idRistorante}?pax=${pax}&data=${date}`}
               className="group bg-white rounded-[2rem] overflow-hidden border border-[#F5CBA7]/40 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 flex flex-col"
             >
               {cardContent}
