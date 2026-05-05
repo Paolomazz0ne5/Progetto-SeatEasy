@@ -4,6 +4,8 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { writeFile, mkdir, unlink } from 'fs/promises';
+import { existsSync } from 'fs';
 
 function getDb() {
   const dbPath = path.resolve(process.cwd(), 'database.db');
@@ -157,6 +159,101 @@ export async function updateRistorante(
   } catch (error: any) {
     console.error('updateRistorante error:', error.message);
     return { success: false, error: 'Errore durante la modifica del ristorante.' };
+  } finally {
+    db.close();
+  }
+}
+
+export type GalleriaItem = {
+  idImmagine: number;
+  idRistorante: number;
+  immagineUrl: string;
+  prezzo: number | null;
+  nota: string | null;
+};
+
+export async function addToGallery(idRistorante: number, formData: FormData): Promise<{ success: boolean; error?: string }> {
+  const cookieStore = await cookies();
+  const sessionId = cookieStore.get('seateasy_session')?.value;
+  if (!sessionId) return { success: false, error: 'Non autenticato.' };
+
+  const file = formData.get('immagine') as File;
+  const prezzo = formData.get('prezzo') ? parseFloat(formData.get('prezzo') as string) : null;
+  const nota = (formData.get('nota') as string)?.substring(0, 100) || null;
+
+  if (!file || file.size === 0) return { success: false, error: 'Nessuna immagine selezionata.' };
+
+  // Validate extension
+  const validExtensions = ['.png', '.jpg', '.jpeg'];
+  const ext = path.extname(file.name).toLowerCase();
+  if (!validExtensions.includes(ext)) {
+    return { success: false, error: 'Formato immagine non valido. Usa PNG o JPG.' };
+  }
+
+  const db = getDb();
+  try {
+    // Ownership check
+    const risto = db.prepare('SELECT idRistorante FROM Ristorante WHERE idRistorante = ? AND idGestoreRistorante = ?').get(idRistorante, Number(sessionId));
+    if (!risto) return { success: false, error: 'Ristorante non trovato o permesso negato.' };
+
+    // Save file
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+    
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+    if (!existsSync(uploadDir)) {
+      await mkdir(uploadDir, { recursive: true });
+    }
+
+    const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+    const filePath = path.join(uploadDir, fileName);
+    const publicUrl = `/uploads/${fileName}`;
+
+    await writeFile(filePath, buffer);
+
+    // Save to DB
+    db.prepare('INSERT INTO GalleriaRistorante (idRistorante, immagineUrl, prezzo, nota) VALUES (?, ?, ?, ?)').run(idRistorante, publicUrl, prezzo, nota);
+
+    revalidatePath(`/gestore/dashboard`);
+    return { success: true };
+  } catch (error: any) {
+    console.error('addToGallery error:', error.message);
+    return { success: false, error: 'Errore durante il caricamento dell\'immagine.' };
+  } finally {
+    db.close();
+  }
+}
+
+export async function removeFromGallery(idImmagine: number): Promise<{ success: boolean; error?: string }> {
+  const cookieStore = await cookies();
+  const sessionId = cookieStore.get('seateasy_session')?.value;
+  if (!sessionId) return { success: false, error: 'Non autenticato.' };
+
+  const db = getDb();
+  try {
+    const item = db.prepare(`
+      SELECT G.* 
+      FROM GalleriaRistorante G
+      JOIN Ristorante R ON G.idRistorante = R.idRistorante
+      WHERE G.idImmagine = ? AND R.idGestoreRistorante = ?
+    `).get(idImmagine, Number(sessionId)) as GalleriaItem | undefined;
+
+    if (!item) return { success: false, error: 'Immagine non trovata o permesso negato.' };
+
+    // Delete file
+    const filePath = path.join(process.cwd(), 'public', item.immagineUrl);
+    if (existsSync(filePath)) {
+      await unlink(filePath);
+    }
+
+    // Delete from DB
+    db.prepare('DELETE FROM GalleriaRistorante WHERE idImmagine = ?').run(idImmagine);
+
+    revalidatePath(`/gestore/dashboard`);
+    return { success: true };
+  } catch (error: any) {
+    console.error('removeFromGallery error:', error.message);
+    return { success: false, error: 'Errore durante la rimozione dell\'immagine.' };
   } finally {
     db.close();
   }

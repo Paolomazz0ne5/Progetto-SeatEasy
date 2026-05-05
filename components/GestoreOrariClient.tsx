@@ -10,6 +10,7 @@ type Orario = {
   oraInizio: string;
   oraFine: string;
   durataMediaServizio: number;
+  turni?: any[];
 };
 
 export default function GestoreOrariClient({ initialOrari, idRistorante }: { initialOrari: Orario[], idRistorante: number }) {
@@ -18,7 +19,12 @@ export default function GestoreOrariClient({ initialOrari, idRistorante }: { ini
 
   // Fascia Oraria State
   const [editOrarioId, setEditOrarioId] = useState<number | null>(null);
-  const [orarioForm, setOrarioForm] = useState({ nome: '', oraInizio: '', oraFine: '' });
+  const [orarioForm, setOrarioForm] = useState({ 
+    nome: '', 
+    oraInizio: '', 
+    oraFine: '', 
+    durataMedia: '90' as string | number 
+  });
   const [showAddOrario, setShowAddOrario] = useState(false);
 
   // --------------
@@ -26,17 +32,19 @@ export default function GestoreOrariClient({ initialOrari, idRistorante }: { ini
   // --------------
   const handleSaveOrario = async () => {
     setLoading(true);
+    const durata = Number(orarioForm.durataMedia) || 90;
     if (editOrarioId) {
-      await updateOrario(editOrarioId, orarioForm.nome, orarioForm.oraInizio, orarioForm.oraFine, 0);
+      await updateOrario(editOrarioId, orarioForm.nome, orarioForm.oraInizio, orarioForm.oraFine, 0, durata);
     } else {
-      await createOrario(idRistorante, orarioForm.nome, orarioForm.oraInizio, orarioForm.oraFine, 0);
+      await createOrario(idRistorante, orarioForm.nome, orarioForm.oraInizio, orarioForm.oraFine, 0, durata);
     }
     window.location.reload();
   };
 
   const handleEditOrarioInit = (o: Orario) => {
     setEditOrarioId(o.idOrario);
-    setOrarioForm({ nome: o.nome, oraInizio: o.oraInizio, oraFine: o.oraFine });
+    const durata = o.turni && o.turni.length > 0 ? o.turni[0].durataMedia : 90;
+    setOrarioForm({ nome: o.nome, oraInizio: o.oraInizio, oraFine: o.oraFine, durataMedia: durata });
     setShowAddOrario(true);
   };
 
@@ -66,7 +74,7 @@ export default function GestoreOrariClient({ initialOrari, idRistorante }: { ini
           <button 
              onClick={() => {
                setEditOrarioId(null);
-               setOrarioForm({ nome: 'Nuovo Servizio', oraInizio: '12:00', oraFine: '15:00' });
+               setOrarioForm({ nome: 'Nuovo Servizio', oraInizio: '12:00', oraFine: '15:00', durataMedia: '90' });
                setShowAddOrario(true);
              }}
              className="bg-[#D35400] text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-[#ba4a00] transition shadow-md"
@@ -97,8 +105,33 @@ export default function GestoreOrariClient({ initialOrari, idRistorante }: { ini
                  <input type="time" value={orarioForm.oraFine} onChange={e => setOrarioForm({...orarioForm, oraFine: e.target.value})} className="w-full p-2.5 bg-white border border-[#F5CBA7] rounded-xl focus:ring-2 focus:ring-[#D35400] focus:outline-none font-bold text-black" />
                </div>
              </div>
+
+             <div className="mt-6 border-t border-[#F5CBA7]/20 pt-6">
+                <label className="block text-xs font-black text-[#781D2D] uppercase tracking-widest mb-3 ml-1">Parametri di Servizio</label>
+                <div className="flex flex-col md:flex-row md:items-center gap-6 bg-[#FDF1E9]/30 p-5 rounded-2xl border border-[#F5CBA7]/20">
+                  <div className="w-full md:w-48">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Durata Media Tavolo</label>
+                    <div className="relative">
+                      <input 
+                        type="number" 
+                        value={orarioForm.durataMedia} 
+                        onChange={e => setOrarioForm({...orarioForm, durataMedia: e.target.value})} 
+                        className="w-full p-2.5 bg-white border border-[#F5CBA7] rounded-xl focus:ring-2 focus:ring-[#D35400] focus:outline-none font-bold text-black pr-12" 
+                        min="15"
+                        step="15"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400">min</span>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-[#781D2D]/70 font-medium italic leading-relaxed">
+                      &quot;Il tempo stimato di permanenza dei clienti. Utile per far prenotare lo stesso tavolo più volte nello stesso turno.&quot;
+                    </p>
+                  </div>
+                </div>
+              </div>
              
-             <div className="mt-4 flex justify-end">
+             <div className="mt-6 flex justify-end">
                <button onClick={handleSaveOrario} disabled={loading} className="bg-[#781D2D] text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-[#5f1723] transition-colors shadow-md">
                  <Save size={18} /> Salva
                </button>

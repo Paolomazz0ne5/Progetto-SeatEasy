@@ -32,10 +32,14 @@ export async function getRestaurants(pax: number = 1) {
   }
 }
 
-export async function getAvailableTables(idRistorante: number, date: string, idTurno: number) {
+export async function getAvailableTables(idRistorante: number, date: string, idTurno: number, selectedTime?: string) {
   const db = getDb();
   try {
-    // Get all tables for the restaurant
+    // 1. Get Turno info (especially durataMedia)
+    const turno = db.prepare('SELECT durataMedia FROM Turno WHERE idTurno = ?').get(idTurno) as { durataMedia: number } | undefined;
+    const durataMedia = turno?.durataMedia || 90;
+
+    // 2. Get all tables for the restaurant
     const allTables = db.prepare(`
       SELECT T.* 
       FROM Tavolo T 
@@ -43,15 +47,52 @@ export async function getAvailableTables(idRistorante: number, date: string, idT
       WHERE S.idRistorante = ?
     `).all(idRistorante) as any[];
 
-    // Get occupied tables for that specific date and turno
-    const occupiedTables = db.prepare(`
-      SELECT OT.idTavolo
+    // 3. Get all reservations for that day and shift
+    const reservations = db.prepare(`
+      SELECT OT.idTavolo, P.dataPrenotazione
       FROM OccupazioneTavolo OT
       JOIN Prenotazione P ON OT.idPrenotazione = P.idPrenotazione
-      WHERE P.dataPrenotazione = ? AND P.idTurno = ? AND P.stato != 'Annullata'
-    `).all(date, idTurno) as { idTavolo: number }[];
+      WHERE P.idTurno = ? AND P.dataPrenotazione LIKE ? AND P.stato != 'Annullata'
+    `).all(idTurno, `${date}%`) as { idTavolo: number, dataPrenotazione: string }[];
 
-    const occupiedIds = new Set(occupiedTables.map(t => t.idTavolo));
+    const occupiedIds = new Set<number>();
+
+    if (selectedTime) {
+      // Helper to convert "HH:MM" to minutes
+      const toMinutes = (timeStr: string) => {
+        if (!timeStr || !timeStr.includes(':')) return 0;
+        const [h, m] = timeStr.split(':').map(Number);
+        return h * 60 + m;
+      };
+
+      const reqStart = toMinutes(selectedTime);
+      const reqEnd = reqStart + durataMedia;
+
+      for (const res of reservations) {
+        // dataPrenotazione can be "YYYY-MM-DD HH:MM" or just "YYYY-MM-DD"
+        const resTimeStr = res.dataPrenotazione.includes(' ') ? res.dataPrenotazione.split(' ')[1] : null;
+        
+        if (!resTimeStr) {
+          // Legacy reservation or whole-shift booking: occupies the table
+          occupiedIds.add(res.idTavolo);
+          continue;
+        }
+
+        const resStart = toMinutes(resTimeStr);
+        const resEnd = resStart + durataMedia;
+
+        // Turnover logic: ReqStart < ResEnd AND ReqEnd > ResStart
+        if (reqStart < resEnd && reqEnd > resStart) {
+          occupiedIds.add(res.idTavolo);
+        }
+      }
+    } else {
+      // If no specific time is selected, we consider the whole day/shift
+      // (Original logic for safety when time is not yet chosen)
+      for (const res of reservations) {
+        occupiedIds.add(res.idTavolo);
+      }
+    }
 
     // Map the status
     return allTables.map(t => ({

@@ -3,7 +3,7 @@
 import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { LayoutDashboard, ArrowLeft, Grid, Clock, MessageSquareHeart, User, LogOut } from 'lucide-react';
+import { LayoutDashboard, ArrowLeft, Grid, Clock, MessageSquareHeart, User, LogOut, Image as ImageIcon } from 'lucide-react';
 import { logoutAction } from '@/app/actions/auth';
 import Logo from '@/components/Logo';
 
@@ -21,6 +21,7 @@ function SidebarContent() {
     { name: 'Dashboard', href: `/gestore/dashboard${qs}`, icon: LayoutDashboard },
     { name: 'Gestione Layout', href: `/gestore/layout${qs}`, icon: Grid },
     { name: 'Orari e Turni', href: `/gestore/orari${qs}`, icon: Clock },
+    { name: 'Galleria Immagini', href: `/gestore/galleria${qs}`, icon: ImageIcon },
     { name: 'Relazioni Clienti', href: `/gestore/relazioni${qs}`, icon: MessageSquareHeart },
   ];
 

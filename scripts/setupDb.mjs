@@ -82,6 +82,7 @@ db.exec(`
       idOrario INTEGER NOT NULL,
       nomeTurno TEXT NOT NULL,
       maxPrenotazioni INTEGER,
+      durataMedia INTEGER DEFAULT 90,
       FOREIGN KEY (idOrario) REFERENCES Orario(idOrario) ON DELETE CASCADE
   );
 
@@ -127,32 +128,40 @@ db.exec(`
       statoInvio TEXT,
       FOREIGN KEY (idPrenotazione) REFERENCES Prenotazione(idPrenotazione) ON DELETE CASCADE
   );
+  CREATE TABLE IF NOT EXISTS GalleriaRistorante (
+    idImmagine INTEGER PRIMARY KEY AUTOINCREMENT,
+    idRistorante INTEGER NOT NULL,
+    immagineUrl TEXT NOT NULL,
+    prezzo REAL,
+    nota TEXT,
+    FOREIGN KEY (idRistorante) REFERENCES Ristorante(idRistorante) ON DELETE CASCADE
+);
 `);
 
 // Inseriamo i dati di prova di base
 const count = db.prepare('SELECT COUNT(*) as count FROM Account').get();
 if (count.count === 0) {
-  // 1. Creo l'Admin
-  const insertAccount = db.prepare('INSERT INTO Account (email, password, nome, cognome) VALUES (?, ?, ?, ?)');
-  const resAdmin = insertAccount.run('admin@seateasy.it', 'hash_pass', 'Mario', 'Gestore');
-  
-  db.prepare('INSERT INTO GestoreRistorante (idAccount, ruolo, PIN) VALUES (?, ?, ?)').run(resAdmin.lastInsertRowid, 'Admin', '1234');
+    // 1. Creo l'Admin
+    const insertAccount = db.prepare('INSERT INTO Account (email, password, nome, cognome) VALUES (?, ?, ?, ?)');
+    const resAdmin = insertAccount.run('admin@seateasy.it', 'hash_pass', 'Mario', 'Gestore');
 
-  // 2. Creo il Ristorante
-  const insertRisto = db.prepare('INSERT INTO Ristorante (idGestoreRistorante, nome, indirizzo, politicaNoShow, caparraRichiesta, tipologia) VALUES (?, ?, ?, ?, ?, ?)');
-  const resRisto = insertRisto.run(resAdmin.lastInsertRowid, 'La Trattoria di Mario', 'Via Roma 1, Milano', 'Caparra trattenuta dopo 15 min di ritardo', 20.00, 'Italiano');
-  
-  // 3. Creo una Sala e un Tavolo di prova per la Dashboard
-  const insertSala = db.prepare('INSERT INTO Sala (idRistorante, nome, capacita, attiva) VALUES (?, ?, ?, ?)');
-  const resSala = insertSala.run(resRisto.lastInsertRowid, 'Sala Principale', 50, 1);
+    db.prepare('INSERT INTO GestoreRistorante (idAccount, ruolo, PIN) VALUES (?, ?, ?)').run(resAdmin.lastInsertRowid, 'Admin', '1234');
 
-  db.prepare('INSERT INTO Tavolo (idSala, numero, posti, stato) VALUES (?, ?, ?, ?)').run(resSala.lastInsertRowid, 1, 4, 'Libero');
+    // 2. Creo il Ristorante
+    const insertRisto = db.prepare('INSERT INTO Ristorante (idGestoreRistorante, nome, indirizzo, politicaNoShow, caparraRichiesta, tipologia) VALUES (?, ?, ?, ?, ?, ?)');
+    const resRisto = insertRisto.run(resAdmin.lastInsertRowid, 'La Trattoria di Mario', 'Via Roma 1, Milano', 'Caparra trattenuta dopo 15 min di ritardo', 20.00, 'Italiano');
 
-  // 4. Creo un Cliente finto
-  const resCliente = insertAccount.run('cliente@email.it', 'hash_pass', 'Luigi', 'Bianchi');
-  db.prepare('INSERT INTO Cliente (idAccount, richiesteSpeciali) VALUES (?, ?)').run(resCliente.lastInsertRowid, 'Allergia alle noci');
+    // 3. Creo una Sala e un Tavolo di prova per la Dashboard
+    const insertSala = db.prepare('INSERT INTO Sala (idRistorante, nome, capacita, attiva) VALUES (?, ?, ?, ?)');
+    const resSala = insertSala.run(resRisto.lastInsertRowid, 'Sala Principale', 50, 1);
 
-  console.log('Dati di prova (Ristorante, Sale, Tavoli e Clienti) inseriti con successo!');
+    db.prepare('INSERT INTO Tavolo (idSala, numero, posti, stato) VALUES (?, ?, ?, ?)').run(resSala.lastInsertRowid, 1, 4, 'Libero');
+
+    // 4. Creo un Cliente finto
+    const resCliente = insertAccount.run('cliente@email.it', 'hash_pass', 'Luigi', 'Bianchi');
+    db.prepare('INSERT INTO Cliente (idAccount, richiesteSpeciali) VALUES (?, ?)').run(resCliente.lastInsertRowid, 'Allergia alle noci');
+
+    console.log('Dati di prova (Ristorante, Sale, Tavoli e Clienti) inseriti con successo!');
 }
 
 console.log('Setup completato! Database allineato al report ufficiale.');

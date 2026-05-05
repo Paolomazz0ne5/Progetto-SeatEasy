@@ -17,7 +17,26 @@ type Turno = {
   idTurno: number;
   nomeTurno: string;
   oraInizio: string;
+  oraFine: string;
 };
+
+function generateTimeSlots(start: string, end: string) {
+  if (!start || !end) return [];
+  const [h1, m1] = start.split(':').map(Number);
+  const [h2, m2] = end.split(':').map(Number);
+  
+  let currentMinutes = h1 * 60 + m1;
+  const endMinutes = h2 * 60 + m2;
+  
+  const slots = [];
+  while (currentMinutes <= endMinutes) {
+    const h = Math.floor(currentMinutes / 60);
+    const m = currentMinutes % 60;
+    slots.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+    currentMinutes += 15;
+  }
+  return slots;
+}
 
 export default function TableMap({
   initialTavoli,
@@ -37,6 +56,7 @@ export default function TableMap({
   const [tavoli, setTavoli] = useState<Tavolo[]>(initialTavoli);
   const [selectedTavoli, setSelectedTavoli] = useState<Tavolo[]>([]);
   const [selectedTurno, setSelectedTurno] = useState<number>(0);
+  const [selectedTime, setSelectedTime] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<string>(
     initialDate || new Date().toISOString().split('T')[0]
   );
@@ -61,7 +81,7 @@ export default function TableMap({
     async function updateAvailability() {
       if (!selectedTurno || !selectedDate) return;
       setLoading(true);
-      const updated = await getAvailableTables(idRistorante, selectedDate, selectedTurno);
+      const updated = await getAvailableTables(idRistorante, selectedDate, selectedTurno, selectedTime);
       setTavoli(updated);
       setLoading(false);
       // Deselect any tables that are no longer free
@@ -73,7 +93,7 @@ export default function TableMap({
       );
     }
     updateAvailability();
-  }, [selectedTurno, selectedDate, idRistorante]);
+  }, [selectedTurno, selectedDate, selectedTime, idRistorante]);
 
   // Derived values
   const selectedIds = new Set(selectedTavoli.map(t => t.idTavolo));
@@ -134,8 +154,8 @@ export default function TableMap({
   };
 
   const handleBooking = async () => {
-    if (!selectedTurno) {
-      setMessage({ type: 'error', text: 'Nessun orario disponibile per questa data.' });
+    if (!selectedTurno || !selectedTime) {
+      setMessage({ type: 'error', text: 'Seleziona un turno e un orario.' });
       return;
     }
     if (selectedTavoli.length === 0) {
@@ -155,7 +175,7 @@ export default function TableMap({
       const result = await createReservation({
         idRistorante,
         idTurno: selectedTurno,
-        dataPrenotazione: selectedDate,
+        dataPrenotazione: `${selectedDate} ${selectedTime}`,
         numeroPersone: pax || totalPostiSelezione,
         idTavoli: selectedTavoli.map(t => t.idTavolo),
         noteCliente: specialRequests,
@@ -305,25 +325,52 @@ export default function TableMap({
 
         {/* Turno selector (Remaining Interactive) */}
         <div className="bg-[#FDF1E9]/30 p-6 rounded-[2rem] border border-[#F5CBA7]/20">
-          <label className="block text-[10px] font-black text-[#781D2D] uppercase tracking-widest mb-3 ml-1">Seleziona l&apos;Orario</label>
-          <div className="flex flex-wrap gap-2">
-            {turni.length === 0 ? (
-              <div className="text-sm font-bold text-red-500 bg-red-50 p-3 rounded-xl border border-red-100">
-                Nessun orario di servizio configurato per questo ristorante.
+          <div className="space-y-6">
+            <div>
+              <label className="block text-[10px] font-black text-[#781D2D] uppercase tracking-widest mb-3 ml-1">Fascia Oraria</label>
+              <div className="flex flex-wrap gap-2">
+                {turni.length === 0 ? (
+                  <div className="text-sm font-bold text-red-500 bg-red-50 p-3 rounded-xl border border-red-100">
+                    Nessun orario di servizio configurato.
+                  </div>
+                ) : (
+                  turni.map(t => (
+                    <button
+                      key={t.idTurno}
+                      type="button"
+                      onClick={() => { setSelectedTurno(t.idTurno); setSelectedTime(''); setSelectedTavoli([]); }}
+                      className={`px-6 py-3 rounded-xl text-sm font-bold transition-all border-2 ${selectedTurno === t.idTurno
+                        ? 'bg-[#781D2D] border-[#781D2D] text-white shadow-md'
+                        : 'bg-white border-[#F5CBA7]/30 text-[#781D2D] hover:border-[#F5CBA7]'}`}
+                    >
+                      {t.nomeTurno}
+                    </button>
+                  ))
+                )}
               </div>
-            ) : (
-              turni.map(t => (
-                <button
-                  key={t.idTurno}
-                  type="button"
-                  onClick={() => { setSelectedTurno(t.idTurno); setSelectedTavoli([]); }}
-                  className={`px-6 py-3 rounded-xl text-sm font-bold transition-all border-2 ${selectedTurno === t.idTurno
-                    ? 'bg-[#781D2D] border-[#781D2D] text-white shadow-md'
-                    : 'bg-white border-[#F5CBA7]/30 text-[#781D2D] hover:border-[#F5CBA7]'}`}
-                >
-                  {t.nomeTurno}
-                </button>
-              ))
+            </div>
+
+            {selectedTurno !== 0 && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                <label className="block text-[10px] font-black text-[#781D2D] uppercase tracking-widest mb-3 ml-1">Seleziona l&apos;Ora esatta</label>
+                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                  {generateTimeSlots(
+                    turni.find(t => t.idTurno === selectedTurno)?.oraInizio || '',
+                    turni.find(t => t.idTurno === selectedTurno)?.oraFine || ''
+                  ).map(slot => (
+                    <button
+                      key={slot}
+                      type="button"
+                      onClick={() => { setSelectedTime(slot); setSelectedTavoli([]); }}
+                      className={`py-2 rounded-lg text-xs font-bold transition-all border ${selectedTime === slot
+                        ? 'bg-[#D35400] border-[#D35400] text-white shadow-sm'
+                        : 'bg-white border-[#F5CBA7]/30 text-[#781D2D] hover:border-[#D35400]'}`}
+                    >
+                      {slot}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         </div>

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import Navbar from '@/components/Navbar';
 import TableMap from '@/components/TableMap';
+import RestaurantGallery from '@/components/RestaurantGallery';
 
 export const dynamic = 'force-dynamic';
 export default async function RistoranteDettaglio({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ pax?: string }> }) {
@@ -34,7 +35,7 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
 
   // Recupera i turni per il ristorante
   const turni = db.prepare(`
-    SELECT T.idTurno, T.nomeTurno, O.oraInizio
+    SELECT T.idTurno, T.nomeTurno, O.oraInizio, O.oraFine
     FROM Turno T
     JOIN Orario O ON T.idOrario = O.idOrario
     WHERE O.idRistorante = ?
@@ -51,6 +52,11 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
     WHERE R.idRistorante = ?
     ORDER BY R.dataCreazione DESC
   `).all(id) as any[];
+
+  // Recupera la galleria
+  const galleria = db.prepare('SELECT * FROM GalleriaRistorante WHERE idRistorante = ? ORDER BY idImmagine DESC').all(id) as any[];
+
+  db.close();
 
   return (
     <div className="min-h-screen bg-[#FFFDFB] font-sans flex flex-col">
@@ -80,6 +86,9 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
             </div>
           </div>
         </div>
+
+        {/* Gallery Slider */}
+        <RestaurantGallery items={galleria} />
 
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 space-y-16">
 

@@ -74,7 +74,7 @@ export default async function GestoreDashboard({
 
   db.close();
 
-  const attive  = rawReservations.filter(r => r.stato !== 'noShow' && r.stato !== 'Annullata').length;
+  const attive = rawReservations.filter(r => r.stato !== 'noShow' && r.stato !== 'Annullata').length;
   const noShows = rawReservations.filter(r => r.stato === 'noShow').length;
 
   return (
@@ -85,12 +85,12 @@ export default async function GestoreDashboard({
       </div>
 
       <div className="flex flex-col py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full relative z-10 min-h-full">
-        
+
         {/* Header Setup */}
         <div className="mb-10 border-b-2 border-[#F5CBA7] pb-6">
           <div className="flex items-center gap-4 mb-2">
             <Link href="/gestore/ristoranti" className="p-2 bg-gray-100 hover:bg-[#FDF1E9] text-gray-500 hover:text-[#D35400] rounded-xl transition-colors">
-               <ArrowLeft size={20} />
+              <ArrowLeft size={20} />
             </Link>
             <h1 className="text-4xl font-extrabold text-[#781D2D] tracking-tight">
               {ristoranteNome}
@@ -102,8 +102,8 @@ export default async function GestoreDashboard({
         </div>
 
         {/* Data Table */}
-        <GestoreDashboardClient 
-          reservations={rawReservations} 
+        <GestoreDashboardClient
+          reservations={rawReservations}
           stats={{ attive, noShows }}
         />
       </div>

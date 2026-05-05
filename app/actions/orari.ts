@@ -27,7 +27,7 @@ export async function ensureNomeOrarioColumn() {
 }
 
 // ORARI (FASCE)
-export async function createOrario(idRistorante: number, nome: string, oraInizio: string, oraFine: string, durataMediaServizio: number) {
+export async function createOrario(idRistorante: number, nome: string, oraInizio: string, oraFine: string, durataMediaServizio: number, durataMedia: number) {
   const db = getDb();
   try {
     const info = db.prepare(`
@@ -37,9 +37,9 @@ export async function createOrario(idRistorante: number, nome: string, oraInizio
     
     // Automatically create a default Turno for this Orario so it shows up in bookings
     db.prepare(`
-      INSERT INTO Turno (idOrario, nomeTurno, maxPrenotazioni)
-      VALUES (?, ?, ?)
-    `).run(info.lastInsertRowid, nome, 20);
+      INSERT INTO Turno (idOrario, nomeTurno, maxPrenotazioni, durataMedia)
+      VALUES (?, ?, ?, ?)
+    `).run(info.lastInsertRowid, nome, 20, durataMedia);
     
     revalidatePath('/gestore/orari');
     return { success: true };
@@ -51,7 +51,7 @@ export async function createOrario(idRistorante: number, nome: string, oraInizio
   }
 }
 
-export async function updateOrario(idOrario: number, nome: string, oraInizio: string, oraFine: string, durataMediaServizio: number) {
+export async function updateOrario(idOrario: number, nome: string, oraInizio: string, oraFine: string, durataMediaServizio: number, durataMedia: number) {
   const db = getDb();
   try {
     db.prepare(`
@@ -59,6 +59,13 @@ export async function updateOrario(idOrario: number, nome: string, oraInizio: st
       SET nome = ?, oraInizio = ?, oraFine = ?, durataMediaServizio = ?
       WHERE idOrario = ?
     `).run(nome, oraInizio, oraFine, durataMediaServizio, idOrario);
+
+    // Also update the default Turno's duration (the one with the same name as the Orario)
+    db.prepare(`
+      UPDATE Turno 
+      SET durataMedia = ?
+      WHERE idOrario = ?
+    `).run(durataMedia, idOrario);
     
     revalidatePath('/gestore/orari');
     return { success: true };
@@ -90,13 +97,13 @@ export async function deleteOrario(idOrario: number) {
 }
 
 // TURNI
-export async function createTurno(idOrario: number, nomeTurno: string, maxPrenotazioni: number) {
+export async function createTurno(idOrario: number, nomeTurno: string, maxPrenotazioni: number, durataMedia: number) {
   const db = getDb();
   try {
     db.prepare(`
-      INSERT INTO Turno (idOrario, nomeTurno, maxPrenotazioni)
-      VALUES (?, ?, ?)
-    `).run(idOrario, nomeTurno, maxPrenotazioni);
+      INSERT INTO Turno (idOrario, nomeTurno, maxPrenotazioni, durataMedia)
+      VALUES (?, ?, ?, ?)
+    `).run(idOrario, nomeTurno, maxPrenotazioni, durataMedia);
     
     revalidatePath('/gestore/orari');
     return { success: true };
@@ -108,14 +115,14 @@ export async function createTurno(idOrario: number, nomeTurno: string, maxPrenot
   }
 }
 
-export async function updateTurno(idTurno: number, nomeTurno: string, maxPrenotazioni: number) {
+export async function updateTurno(idTurno: number, nomeTurno: string, maxPrenotazioni: number, durataMedia: number) {
   const db = getDb();
   try {
     db.prepare(`
       UPDATE Turno 
-      SET nomeTurno = ?, maxPrenotazioni = ?
+      SET nomeTurno = ?, maxPrenotazioni = ?, durataMedia = ?
       WHERE idTurno = ?
-    `).run(nomeTurno, maxPrenotazioni, idTurno);
+    `).run(nomeTurno, maxPrenotazioni, durataMedia, idTurno);
     
     revalidatePath('/gestore/orari');
     return { success: true };
