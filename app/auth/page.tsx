@@ -192,13 +192,8 @@ export default function UnifiedAuthPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-xs font-bold text-gray-700 ml-1 flex justify-between items-center">
-              <span>Password</span>
-              {mode === 'login' && (
-                <Link href="#" className="font-medium text-[#D35400] hover:text-[#781D2D] hover:underline transition-colors">
-                  Hai dimenticato la password?
-                </Link>
-              )}
+            <label className="block text-xs font-bold text-gray-700 ml-1">
+              Password
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">

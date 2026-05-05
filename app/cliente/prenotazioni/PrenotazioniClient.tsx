@@ -18,7 +18,7 @@ interface Reservation {
   numeroPersone: number;
   stato: string;
   noteCliente: string | null;
-  numeroTavolo: number;
+  numeroTavolo: string;
   politicaNoShow: string;
   caparraRichiesta: number;
 }
@@ -57,13 +57,14 @@ export default function PrenotazioniClient({
     const review = userReviews.find(r => r.idRistorante === pre.idRistorante);
 
     return (
-      <div 
-        key={pre.idPrenotazione}
+      <div
         className={`bg-white border border-[#F5CBA7]/40 rounded-[2rem] p-6 sm:p-8 shadow-sm hover:shadow-md transition-all flex flex-col md:flex-row gap-8 items-center ${pre.stato === 'Annullata' ? 'opacity-60 grayscale-[0.5]' : ''}`}
       >
         <div className={`w-full md:w-48 h-32 rounded-2xl flex items-center justify-center overflow-hidden shrink-0 ${pre.stato === 'Annullata' ? 'bg-gray-100' : (isPast ? 'bg-gray-50' : 'bg-[#FDF1E9]')}`}>
            <div className="text-center">
-              <p className={`font-black text-2xl ${pre.stato === 'Annullata' ? 'text-gray-400' : (isPast ? 'text-gray-300' : 'text-[#781D2D]')}`}>T{pre.numeroTavolo}</p>
+              <p className={`font-black text-2xl ${pre.stato === 'Annullata' ? 'text-gray-400' : (isPast ? 'text-gray-300' : 'text-[#781D2D]')}`}>
+                {String(pre.numeroTavolo).split(',').map(n => `T${n.trim()}`).join(', ')}
+              </p>
               <p className={`text-[10px] font-bold uppercase tracking-widest ${pre.stato === 'Annullata' ? 'text-gray-400' : (isPast ? 'text-gray-300' : 'text-[#D35400]')}`}>Tavolo</p>
            </div>
         </div>
@@ -164,7 +165,7 @@ export default function PrenotazioniClient({
               In Corso
             </h2>
             <div className="grid gap-6">
-              {attive.map(p => renderPrenotazione(p, false))}
+              {attive.map(p => <React.Fragment key={p.idPrenotazione}>{renderPrenotazione(p, false)}</React.Fragment>)}
             </div>
           </div>
         )}
@@ -176,7 +177,7 @@ export default function PrenotazioniClient({
               Storico Visite
             </h2>
             <div className="grid gap-6">
-              {passate.map(p => renderPrenotazione(p, true))}
+              {passate.map(p => <React.Fragment key={p.idPrenotazione}>{renderPrenotazione(p, true)}</React.Fragment>)}
             </div>
           </div>
         )}
@@ -188,7 +189,7 @@ export default function PrenotazioniClient({
               Annullate
             </h2>
             <div className="grid gap-6">
-              {annullate.map(p => renderPrenotazione(p, false))}
+              {annullate.map(p => <React.Fragment key={p.idPrenotazione}>{renderPrenotazione(p, false)}</React.Fragment>)}
             </div>
           </div>
         )}

@@ -44,10 +44,10 @@ export async function deleteSala(idSala: number) {
 }
 
 // TAVOLI
-export async function createTavolo(idSala: number, numero: number, posti: number) {
+export async function createTavolo(idSala: number, numero: number, posti: number, postiMinimi: number) {
   const db = getDb();
   try {
-    db.prepare('INSERT INTO Tavolo (idSala, numero, posti, stato) VALUES (?, ?, ?, ?)').run(idSala, numero, posti, 'Libero');
+    db.prepare('INSERT INTO Tavolo (idSala, numero, posti, postiMinimi, stato) VALUES (?, ?, ?, ?, ?)').run(idSala, numero, posti, postiMinimi, 'Libero');
     revalidatePath('/gestore/layout');
     return { success: true };
   } catch (error: any) {
@@ -58,10 +58,10 @@ export async function createTavolo(idSala: number, numero: number, posti: number
   }
 }
 
-export async function updateTavolo(idTavolo: number, numero: number, posti: number) {
+export async function updateTavolo(idTavolo: number, numero: number, posti: number, postiMinimi: number) {
   const db = getDb();
   try {
-    db.prepare('UPDATE Tavolo SET numero = ?, posti = ? WHERE idTavolo = ?').run(numero, posti, idTavolo);
+    db.prepare('UPDATE Tavolo SET numero = ?, posti = ?, postiMinimi = ? WHERE idTavolo = ?').run(numero, posti, postiMinimi, idTavolo);
     revalidatePath('/gestore/layout');
     return { success: true };
   } catch (error: any) {
@@ -81,6 +81,55 @@ export async function deleteTavolo(idTavolo: number) {
   } catch (error: any) {
     console.error('Failed to delete tavolo:', error.message);
     return { success: false, error: 'Errore durante l\'eliminazione del tavolo.' };
+  } finally {
+    db.close();
+  }
+}
+
+export async function linkTavoli(tavoloIds: number[]) {
+  if (tavoloIds.length < 2) return { success: false, error: 'Seleziona almeno 2 tavoli.' };
+  
+  const db = getDb();
+  try {
+    const idGruppo = `GRUPPO-${Date.now()}`;
+    const placeholders = tavoloIds.map(() => '?').join(',');
+    
+    db.prepare(`UPDATE Tavolo SET idGruppo = ? WHERE idTavolo IN (${placeholders})`)
+      .run(idGruppo, ...tavoloIds);
+      
+    revalidatePath('/gestore/layout');
+    return { success: true };
+  } catch (error: any) {
+    console.error('Failed to link tavoli:', error.message);
+    return { success: false, error: 'Errore durante il collegamento dei tavoli.' };
+  } finally {
+    db.close();
+  }
+}
+
+export async function unlinkTavolo(idTavolo: number) {
+  const db = getDb();
+  try {
+    db.prepare('UPDATE Tavolo SET idGruppo = NULL WHERE idTavolo = ?').run(idTavolo);
+    
+    // Check if any groups have only 1 table left and remove the group if so
+    db.prepare(`
+      UPDATE Tavolo 
+      SET idGruppo = NULL 
+      WHERE idGruppo IN (
+        SELECT idGruppo 
+        FROM Tavolo 
+        WHERE idGruppo IS NOT NULL 
+        GROUP BY idGruppo 
+        HAVING COUNT(*) < 2
+      )
+    `).run();
+
+    revalidatePath('/gestore/layout');
+    return { success: true };
+  } catch (error: any) {
+    console.error('Failed to unlink tavolo:', error.message);
+    return { success: false, error: 'Errore durante lo scollegamento del tavolo.' };
   } finally {
     db.close();
   }

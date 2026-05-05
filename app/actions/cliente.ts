@@ -68,7 +68,7 @@ export async function createReservation(data: {
   idTurno: number,
   dataPrenotazione: string,
   numeroPersone: number,
-  idTavolo: number,
+  idTavoli: number[],
   noteCliente?: string,
   caparraPagata?: boolean
 }) {
@@ -88,11 +88,14 @@ export async function createReservation(data: {
 
       const idPrenotazione = res.lastInsertRowid;
 
-      // 2. Link the table
-      db.prepare(`
+      // 2. Link the tables
+      const insertTavolo = db.prepare(`
         INSERT INTO OccupazioneTavolo (idTavolo, idPrenotazione)
         VALUES (?, ?)
-      `).run(data.idTavolo, idPrenotazione);
+      `);
+      for (const idTavolo of data.idTavoli) {
+        insertTavolo.run(idTavolo, idPrenotazione);
+      }
 
       return idPrenotazione;
     });
@@ -117,9 +120,10 @@ export async function getMyReservations() {
   const db = getDb();
   try {
     return db.prepare(`
-      SELECT P.*, R.nome as ristoranteNome, R.indirizzo as ristoranteIndirizzo, 
+      SELECT P.*, R.idRistorante, R.nome as ristoranteNome, R.indirizzo as ristoranteIndirizzo, 
              R.politicaNoShow, R.caparraRichiesta,
-             T.numero as numeroTavolo, O.oraInizio
+             GROUP_CONCAT(T.numero ORDER BY T.numero ASC) as numeroTavolo,
+             O.oraInizio
       FROM Prenotazione P
       JOIN Turno TU ON P.idTurno = TU.idTurno
       JOIN Orario O ON TU.idOrario = O.idOrario
@@ -127,6 +131,7 @@ export async function getMyReservations() {
       JOIN OccupazioneTavolo OT ON P.idPrenotazione = OT.idPrenotazione
       JOIN Tavolo T ON OT.idTavolo = T.idTavolo
       WHERE P.idCliente = ?
+      GROUP BY P.idPrenotazione
       ORDER BY P.dataPrenotazione DESC, O.oraInizio DESC
     `).all(idCliente) as any[];
   } finally {
