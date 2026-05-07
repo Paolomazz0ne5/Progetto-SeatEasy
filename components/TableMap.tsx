@@ -109,6 +109,22 @@ export default function TableMap({
   const handleTableClick = (tavolo: Tavolo) => {
     if (tavolo.stato !== 'Libero') return;
 
+    // Check if the table (or its group) can possibly fit the pax
+    if (pax !== undefined) {
+      const groupTables = tavolo.idGruppo
+        ? tavoli.filter(t => t.idGruppo === tavolo.idGruppo && t.stato === 'Libero')
+        : [tavolo];
+      const groupMax = groupTables.reduce((s, t) => s + t.posti, 0);
+
+      if (pax > groupMax) {
+        const msg = tavolo.idGruppo
+          ? `Questo gruppo di tavoli può ospitare al massimo ${groupMax} persone.`
+          : `Questo tavolo può ospitare al massimo ${tavolo.posti} persone.`;
+        setTimeout(() => showMinToast(msg), 0);
+        return;
+      }
+    }
+
     setSelectedTavoli(prev => {
       const isAlreadySelected = prev.some(t => t.idTavolo === tavolo.idTavolo);
 
@@ -390,6 +406,13 @@ export default function TableMap({
             const isSelected = selectedIds.has(tavolo.idTavolo);
             // Check if pax respects the minimum for this table
             const belowMinimum = isLibero && pax !== undefined && pax < (tavolo.postiMinimi ?? 1);
+            // Check if the table (or its group) can fit the pax
+            const groupTables = tavolo.idGruppo 
+              ? tavoli.filter(t => t.idGruppo === tavolo.idGruppo && t.stato === 'Libero')
+              : [tavolo];
+            const groupMax = groupTables.reduce((s, t) => s + t.posti, 0);
+            const tooSmall = isLibero && pax !== undefined && pax > groupMax;
+
             // Blocco a Soddisfacimento
             const isBlockedByFulfillment = isFulfilled && isLibero && !isSelected;
 
@@ -400,7 +423,7 @@ export default function TableMap({
               cls = 'bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed opacity-50';
             } else if (isBlockedByFulfillment) {
               cls = 'bg-white border-[#F5CBA7] text-[#781D2D] opacity-50 cursor-not-allowed';
-            } else if (belowMinimum) {
+            } else if (belowMinimum || tooSmall) {
               cls = 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed opacity-60';
             } else if (isSelected) {
               cls = 'bg-gradient-to-br from-[#D35400] to-[#781D2D] border-[#781D2D] text-white shadow-xl scale-110 ring-4 ring-[#F5CBA7] cursor-pointer';
