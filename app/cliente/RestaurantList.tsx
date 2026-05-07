@@ -48,7 +48,7 @@ export default function RestaurantList({ initialRestaurants, pax = 1, date }: { 
             <>
               <div className="relative h-64 overflow-hidden shrink-0">
                 <img 
-                  src={`https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80`}
+                  src={risto.foto_url || `https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80`}
                   alt={risto.nome}
                   className={`w-full h-full object-cover transition-transform duration-700 ${risto.isDisponibile ? 'group-hover:scale-110' : 'grayscale opacity-70'}`}
                 />

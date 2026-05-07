@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Plus, X, Store, MapPin, Phone, Mail, ChevronRight,
-  FileText, Banknote, Loader2, AlertCircle, Pencil,
+  FileText, Banknote, Loader2, AlertCircle, Pencil, Image as ImageIcon, Trash2
 } from 'lucide-react';
 import { addRistorante, updateRistorante, Ristorante } from '@/app/actions/ristoranti';
 
@@ -32,7 +32,6 @@ function RistoranteFormFields({ defaults }: { defaults?: Partial<Ristorante> }) 
           />
         </div>
       </div>
-
       {/* Indirizzo */}
       <div className="space-y-1.5">
         <label className="block text-xs font-bold text-gray-700 ml-1">
@@ -50,6 +49,52 @@ function RistoranteFormFields({ defaults }: { defaults?: Partial<Ristorante> }) 
             placeholder="Es: Via Roma 1, Milano"
             className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-[#D35400] transition-shadow text-gray-900 text-sm"
           />
+        </div>
+      </div>
+
+      {/* Foto Illustrativa */}
+      <div className="space-y-1.5">
+        <label className="block text-xs font-bold text-gray-700 ml-1">
+          Foto Illustrativa Ristorante
+        </label>
+        
+        <div className="flex flex-col gap-3">
+          {/* Current photo preview or placeholder */}
+          <div className="flex items-center gap-4">
+            <div className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center flex-shrink-0">
+              {defaults?.foto_url ? (
+                <img src={defaults.foto_url} alt="Preview" className="w-full h-full object-cover" />
+              ) : (
+                <ImageIcon size={24} className="text-gray-300" />
+              )}
+            </div>
+            
+            <div className="flex-1">
+              <input
+                name="foto"
+                type="file"
+                accept=".jpg,.jpeg,.png"
+                className="block w-full text-xs text-gray-500
+                  file:mr-4 file:py-2 file:px-4
+                  file:rounded-full file:border-0
+                  file:text-xs file:font-semibold
+                  file:bg-[#fdf1e9] file:text-[#D35400]
+                  hover:file:bg-[#fae5d3] transition-all"
+              />
+              <p className="mt-1 text-[10px] text-gray-400">Formati accettati: JPG, PNG. Max 5MB.</p>
+            </div>
+          </div>
+
+          {/* Logic to remove existing photo if any */}
+          {defaults?.foto_url && (
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 text-xs text-red-600 font-medium cursor-pointer hover:bg-red-50 px-2 py-1 rounded-lg transition-colors">
+                <input type="checkbox" name="removeFoto" value="true" className="rounded text-red-600 focus:ring-red-500" />
+                <Trash2 size={14} />
+                Rimuovi foto attuale
+              </label>
+            </div>
+          )}
         </div>
       </div>
 

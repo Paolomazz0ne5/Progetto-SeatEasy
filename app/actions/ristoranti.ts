@@ -21,6 +21,7 @@ export type Ristorante = {
   politicaNoShow: string | null;
   caparraRichiesta: number | null;
   tipologia: string | null;
+  foto_url: string | null;
 };
 
 export async function ensureRistoranteColumns() {
@@ -37,6 +38,9 @@ export async function ensureRistoranteColumns() {
     }
     if (!columns.includes('tipologia')) {
       db.prepare("ALTER TABLE Ristorante ADD COLUMN tipologia TEXT").run();
+    }
+    if (!columns.includes('foto_url')) {
+      db.prepare("ALTER TABLE Ristorante ADD COLUMN foto_url TEXT").run();
     }
   } catch (err) {
     console.error("Error patching Ristorante table:", err);
@@ -58,7 +62,7 @@ export async function getMyRistoranti(): Promise<{ success: boolean; data?: Rist
   try {
     const rows = db
       .prepare(
-        `SELECT idRistorante, nome, indirizzo, telefono, email, politicaNoShow, caparraRichiesta, tipologia
+        `SELECT idRistorante, nome, indirizzo, telefono, email, politicaNoShow, caparraRichiesta, tipologia, foto_url
          FROM Ristorante
          WHERE idGestoreRistorante = ?`
       )
@@ -97,10 +101,35 @@ export async function addRistorante(formData: FormData): Promise<{ success: bool
 
   const db = getDb();
   try {
+    let foto_url = null;
+    const file = formData.get('foto') as File;
+    
+    if (file && file.size > 0) {
+      const validExtensions = ['.png', '.jpg', '.jpeg'];
+      const ext = path.extname(file.name).toLowerCase();
+      if (!validExtensions.includes(ext)) {
+        return { success: false, error: 'Formato immagine non valido. Usa PNG o JPG.' };
+      }
+
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'ristoranti');
+      if (!existsSync(uploadDir)) {
+        await mkdir(uploadDir, { recursive: true });
+      }
+
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}${ext}`;
+      const filePath = path.join(uploadDir, fileName);
+      foto_url = `/uploads/ristoranti/${fileName}`;
+
+      await writeFile(filePath, buffer);
+    }
+
     db.prepare(
-      `INSERT INTO Ristorante (idGestoreRistorante, nome, indirizzo, telefono, email, politicaNoShow, caparraRichiesta, tipologia)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(Number(sessionId), nome, indirizzo, telefono, email, politicaNoShow, caparraRichiesta, tipologia);
+      `INSERT INTO Ristorante (idGestoreRistorante, nome, indirizzo, telefono, email, politicaNoShow, caparraRichiesta, tipologia, foto_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(Number(sessionId), nome, indirizzo, telefono, email, politicaNoShow, caparraRichiesta, tipologia, foto_url);
 
     revalidatePath('/');
     revalidatePath('/cliente');
@@ -140,14 +169,55 @@ export async function updateRistorante(
 
   const db = getDb();
   try {
-    // Only allow update if the restaurant belongs to this gestore
+    // Check existing
+    const existing = db.prepare('SELECT foto_url FROM Ristorante WHERE idRistorante = ? AND idGestoreRistorante = ?').get(idRistorante, Number(sessionId)) as { foto_url: string | null } | undefined;
+    if (!existing) return { success: false, error: 'Ristorante non trovato.' };
+
+    let foto_url = existing.foto_url;
+    const file = formData.get('foto') as File;
+    const removeFoto = formData.get('removeFoto') === 'true';
+
+    if (removeFoto && foto_url) {
+      const oldPath = path.join(process.cwd(), 'public', foto_url);
+      if (existsSync(oldPath)) await unlink(oldPath);
+      foto_url = null;
+    }
+
+    if (file && file.size > 0) {
+      // Remove old if exists
+      if (foto_url) {
+        const oldPath = path.join(process.cwd(), 'public', foto_url);
+        if (existsSync(oldPath)) await unlink(oldPath);
+      }
+
+      const validExtensions = ['.png', '.jpg', '.jpeg'];
+      const ext = path.extname(file.name).toLowerCase();
+      if (!validExtensions.includes(ext)) {
+        return { success: false, error: 'Formato immagine non valido. Usa PNG o JPG.' };
+      }
+
+      const bytes = await file.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      
+      const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'ristoranti');
+      if (!existsSync(uploadDir)) {
+        await mkdir(uploadDir, { recursive: true });
+      }
+
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}${ext}`;
+      const filePath = path.join(uploadDir, fileName);
+      foto_url = `/uploads/ristoranti/${fileName}`;
+
+      await writeFile(filePath, buffer);
+    }
+
     const result = db
       .prepare(
         `UPDATE Ristorante
-         SET nome = ?, indirizzo = ?, telefono = ?, email = ?, politicaNoShow = ?, caparraRichiesta = ?, tipologia = ?
+         SET nome = ?, indirizzo = ?, telefono = ?, email = ?, politicaNoShow = ?, caparraRichiesta = ?, tipologia = ?, foto_url = ?
          WHERE idRistorante = ? AND idGestoreRistorante = ?`
       )
-      .run(nome, indirizzo, telefono, email, politicaNoShow, caparraRichiesta, tipologia, idRistorante, Number(sessionId));
+      .run(nome, indirizzo, telefono, email, politicaNoShow, caparraRichiesta, tipologia, foto_url, idRistorante, Number(sessionId));
 
     if (result.changes === 0) {
       return { success: false, error: 'Ristorante non trovato o permesso negato.' };

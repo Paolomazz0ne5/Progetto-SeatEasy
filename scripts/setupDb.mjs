@@ -44,6 +44,7 @@ db.exec(`
       politicaNoShow TEXT,
       caparraRichiesta REAL,
       tipologia TEXT,
+      foto_url TEXT,
       FOREIGN KEY (idGestoreRistorante) REFERENCES GestoreRistorante(idAccount) ON DELETE RESTRICT
   );
 
