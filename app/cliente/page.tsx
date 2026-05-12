@@ -4,7 +4,7 @@ import { getRestaurants } from '@/app/actions/cliente';
 import { cookies } from 'next/headers';
 import RestaurantList from './RestaurantList';
 
-export default async function ClienteDashboard(props: { searchParams: Promise<{ pax?: string }> }) {
+export default async function ClienteDashboard(props: { searchParams: Promise<{ pax?: string; data?: string }> }) {
   const cookieStore = await cookies();
   const isLoggedIn = cookieStore.has('seateasy_session');
   

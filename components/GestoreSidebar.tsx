@@ -19,7 +19,7 @@ function SidebarContent() {
 
   const navItems = [
     { name: 'Dashboard', href: `/gestore/dashboard${qs}`, icon: LayoutDashboard },
-    { name: 'Gestione Layout', href: `/gestore/layout${qs}`, icon: Grid },
+    { name: 'Gestione Layout', href: `/gestore/sala-layout${qs}`, icon: Grid },
     { name: 'Orari e Turni', href: `/gestore/orari${qs}`, icon: Clock },
     { name: 'Galleria Immagini', href: `/gestore/galleria${qs}`, icon: ImageIcon },
     { name: 'Relazioni Clienti', href: `/gestore/relazioni${qs}`, icon: MessageSquareHeart },

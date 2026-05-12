@@ -7,7 +7,7 @@ import TableMap from '@/components/TableMap';
 import RestaurantGallery from '@/components/RestaurantGallery';
 
 export const dynamic = 'force-dynamic';
-export default async function RistoranteDettaglio({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ pax?: string }> }) {
+export default async function RistoranteDettaglio({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ pax?: string; data?: string }> }) {
   const { id } = await params;
   const sParams = await searchParams;
   const pax = parseInt(sParams?.pax || '1', 10);

@@ -14,7 +14,7 @@ export async function createSala(nome: string, idRistorante: number) {
   const db = getDb();
   try {
     db.prepare('INSERT INTO Sala (idRistorante, nome, capacita, attiva) VALUES (?, ?, ?, ?)').run(idRistorante, nome, 0, 1);
-    revalidatePath('/gestore/layout');
+    revalidatePath('/gestore/sala-layout');
     return { success: true };
   } catch (error: any) {
     console.error('Failed to create sala:', error.message);
@@ -33,7 +33,7 @@ export async function deleteSala(idSala: number) {
       db.prepare('DELETE FROM Sala WHERE idSala = ?').run(idSala);
     });
     transaction();
-    revalidatePath('/gestore/layout');
+    revalidatePath('/gestore/sala-layout');
     return { success: true };
   } catch (error: any) {
     console.error('Failed to delete sala:', error.message);
@@ -48,7 +48,7 @@ export async function createTavolo(idSala: number, numero: number, posti: number
   const db = getDb();
   try {
     db.prepare('INSERT INTO Tavolo (idSala, numero, posti, postiMinimi, stato) VALUES (?, ?, ?, ?, ?)').run(idSala, numero, posti, postiMinimi, 'Libero');
-    revalidatePath('/gestore/layout');
+    revalidatePath('/gestore/sala-layout');
     return { success: true };
   } catch (error: any) {
     console.error('Failed to create tavolo:', error.message);
@@ -62,7 +62,7 @@ export async function updateTavolo(idTavolo: number, numero: number, posti: numb
   const db = getDb();
   try {
     db.prepare('UPDATE Tavolo SET numero = ?, posti = ?, postiMinimi = ? WHERE idTavolo = ?').run(numero, posti, postiMinimi, idTavolo);
-    revalidatePath('/gestore/layout');
+    revalidatePath('/gestore/sala-layout');
     return { success: true };
   } catch (error: any) {
     console.error('Failed to update tavolo:', error.message);
@@ -76,7 +76,7 @@ export async function deleteTavolo(idTavolo: number) {
   const db = getDb();
   try {
     db.prepare('DELETE FROM Tavolo WHERE idTavolo = ?').run(idTavolo);
-    revalidatePath('/gestore/layout');
+    revalidatePath('/gestore/sala-layout');
     return { success: true };
   } catch (error: any) {
     console.error('Failed to delete tavolo:', error.message);
@@ -97,7 +97,7 @@ export async function linkTavoli(tavoloIds: number[]) {
     db.prepare(`UPDATE Tavolo SET idGruppo = ? WHERE idTavolo IN (${placeholders})`)
       .run(idGruppo, ...tavoloIds);
       
-    revalidatePath('/gestore/layout');
+    revalidatePath('/gestore/sala-layout');
     return { success: true };
   } catch (error: any) {
     console.error('Failed to link tavoli:', error.message);
@@ -125,7 +125,7 @@ export async function unlinkTavolo(idTavolo: number) {
       )
     `).run();
 
-    revalidatePath('/gestore/layout');
+    revalidatePath('/gestore/sala-layout');
     return { success: true };
   } catch (error: any) {
     console.error('Failed to unlink tavolo:', error.message);

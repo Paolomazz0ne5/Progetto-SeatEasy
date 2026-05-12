@@ -3,7 +3,6 @@ import path from 'path';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import GestoreOrariClient from '@/components/GestoreOrariClient';
-import AffluenzaChart from '@/components/AffluenzaChart';
 import { ensureNomeOrarioColumn } from '@/app/actions/orari';
 
 import { redirect } from 'next/navigation';
@@ -61,10 +60,7 @@ export default async function GestoreOrariPage({
           </p>
         </div>
 
-        {/* Affluenza & Service Duration Chart */}
-        <div className="mb-8">
-          <AffluenzaChart />
-        </div>
+        {/* Affluenza & Service Duration Chart removed as per request */}
 
         {/* Client Interactive Area */}
         <GestoreOrariClient initialOrari={orari} idRistorante={ristoranteId} />
