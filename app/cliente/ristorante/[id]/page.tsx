@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import Navbar from '@/components/Navbar';
 import TableMap from '@/components/TableMap';
 import RestaurantGallery from '@/components/RestaurantGallery';
+import { ensureGalleriaTable } from '@/app/actions/ristoranti';
 
 export const dynamic = 'force-dynamic';
 export default async function RistoranteDettaglio({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ pax?: string; data?: string }> }) {
@@ -18,6 +19,9 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
 
   const dbPath = path.resolve(process.cwd(), 'database.db');
   const db = new Database(dbPath);
+
+  // Assicurati che la tabella galleria esista
+  await ensureGalleriaTable();
 
   const ristorante = db.prepare('SELECT * FROM Ristorante WHERE idRistorante = ?').get(id) as any;
 

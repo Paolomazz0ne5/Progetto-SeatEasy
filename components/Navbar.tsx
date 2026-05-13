@@ -45,7 +45,7 @@ export default function Navbar({ isLoggedIn: initialIsLoggedIn = false }: { isLo
                 >
                   Le Mie Prenotazioni
                 </Link>
-                <button 
+                <button
                   onClick={handleLogout}
                   className="font-bold text-[#781D2D] hover:text-[#5f1723] transition-colors text-sm uppercase tracking-wider border-l border-[#781D2D]/20 pl-6"
                 >

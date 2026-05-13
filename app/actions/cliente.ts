@@ -4,6 +4,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { ensureTurnoColumns } from './orari';
 
 function getDb() {
   const dbPath = path.resolve(process.cwd(), 'database.db');
@@ -33,6 +34,7 @@ export async function getRestaurants(pax: number = 1) {
 }
 
 export async function getAvailableTables(idRistorante: number, date: string, idTurno: number, selectedTime?: string) {
+  await ensureTurnoColumns();
   const db = getDb();
   try {
     // 1. Get Turno info (especially durataMedia)
