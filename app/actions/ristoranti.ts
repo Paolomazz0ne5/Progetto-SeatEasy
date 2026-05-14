@@ -49,6 +49,26 @@ export async function ensureRistoranteColumns() {
   }
 }
 
+export async function ensureGalleriaTable() {
+  const db = getDb();
+  try {
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS GalleriaRistorante (
+        idImmagine INTEGER PRIMARY KEY AUTOINCREMENT,
+        idRistorante INTEGER NOT NULL,
+        immagineUrl TEXT NOT NULL,
+        prezzo REAL,
+        nota TEXT,
+        FOREIGN KEY (idRistorante) REFERENCES Ristorante(idRistorante) ON DELETE CASCADE
+      )
+    `).run();
+  } catch (err) {
+    console.error("Error creating GalleriaRistorante table:", err);
+  } finally {
+    db.close();
+  }
+}
+
 export async function getMyRistoranti(): Promise<{ success: boolean; data?: Ristorante[]; error?: string }> {
   const cookieStore = await cookies();
   const sessionId = cookieStore.get('seateasy_session')?.value;
@@ -260,6 +280,7 @@ export async function addToGallery(idRistorante: number, formData: FormData): Pr
     return { success: false, error: 'Formato immagine non valido. Usa PNG o JPG.' };
   }
 
+  await ensureGalleriaTable();
   const db = getDb();
   try {
     // Ownership check
@@ -299,6 +320,7 @@ export async function removeFromGallery(idImmagine: number): Promise<{ success: 
   const sessionId = cookieStore.get('seateasy_session')?.value;
   if (!sessionId) return { success: false, error: 'Non autenticato.' };
 
+  await ensureGalleriaTable();
   const db = getDb();
   try {
     const item = db.prepare(`

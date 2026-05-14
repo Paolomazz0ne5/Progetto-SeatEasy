@@ -3,10 +3,9 @@ import path from 'path';
 
 import { cookies } from 'next/headers';
 import Navbar from '@/components/Navbar';
-import nextDynamic from 'next/dynamic';
-
-const TableMap = nextDynamic(() => import('@/components/TableMap'));
-const RestaurantGallery = nextDynamic(() => import('@/components/RestaurantGallery'));
+import TableMap from '@/components/TableMap';
+import RestaurantGallery from '@/components/RestaurantGallery';
+import { ensureGalleriaTable } from '@/app/actions/ristoranti';
 
 export const dynamic = 'force-dynamic';
 export default async function RistoranteDettaglio({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ pax?: string; data?: string }> }) {
@@ -14,12 +13,15 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
   const sParams = await searchParams;
   const pax = parseInt(sParams?.pax || '1', 10);
   const data = sParams?.data || new Date().toISOString().split('T')[0];
-  
+
   const cookieStore = await cookies();
   const isLoggedIn = cookieStore.has('seateasy_session');
 
   const dbPath = path.resolve(process.cwd(), 'database.db');
   const db = new Database(dbPath);
+
+  // Assicurati che la tabella galleria esista
+  await ensureGalleriaTable();
 
   const ristorante = db.prepare('SELECT * FROM Ristorante WHERE idRistorante = ?').get(id) as any;
 

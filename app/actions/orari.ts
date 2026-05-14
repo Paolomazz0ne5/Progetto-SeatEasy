@@ -19,8 +19,26 @@ export async function ensureNomeOrarioColumn() {
     if (!hasNome) {
       db.prepare("ALTER TABLE Orario ADD COLUMN nome TEXT DEFAULT 'Fascia Oraria'").run();
     }
+    
+    await ensureTurnoColumns();
   } catch (error) {
     console.error("Migration check failed:", error);
+  } finally {
+    db.close();
+  }
+}
+
+export async function ensureTurnoColumns() {
+  const db = getDb();
+  try {
+    const tableInfo = db.prepare("PRAGMA table_info(Turno)").all() as any[];
+    const columns = tableInfo.map(col => col.name);
+    
+    if (!columns.includes('durataMedia')) {
+      db.prepare("ALTER TABLE Turno ADD COLUMN durataMedia INTEGER DEFAULT 90").run();
+    }
+  } catch (error) {
+    console.error("Migration check for Turno failed:", error);
   } finally {
     db.close();
   }
