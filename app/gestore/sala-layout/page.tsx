@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'path';
-import GestoreLayoutClient from '@/components/GestoreLayoutClient';
+import nextDynamic from 'next/dynamic';
+const GestoreLayoutClient = nextDynamic(() => import('@/components/GestoreLayoutClient'));
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 

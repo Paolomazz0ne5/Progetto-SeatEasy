@@ -2,7 +2,9 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import GestoreDashboardClient, { ReservationData } from '@/components/GestoreDashboardClient';
+import nextDynamic from 'next/dynamic';
+import { ReservationData } from '@/components/GestoreDashboardClient';
+const GestoreDashboardClient = nextDynamic(() => import('@/components/GestoreDashboardClient'));
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 

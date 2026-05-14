@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Star, X, Loader2 } from 'lucide-react';
 import { addReview, updateReview } from '@/app/actions/cliente';
 import { useRouter } from 'next/navigation';
@@ -45,7 +45,7 @@ export default function ReviewModal({ idRistorante, ristoranteNome, onClose, onS
       } else {
         setError(result.error || "Si è verificato un errore.");
       }
-    } catch (err) {
+    } catch {
       setError("Errore di connessione al server.");
     } finally {
       setLoading(false);

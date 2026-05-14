@@ -57,7 +57,7 @@ export default function TableMap({
   const [selectedTavoli, setSelectedTavoli] = useState<Tavolo[]>([]);
   const [selectedTurno, setSelectedTurno] = useState<number>(0);
   const [selectedTime, setSelectedTime] = useState<string>('');
-  const [selectedDate, setSelectedDate] = useState<string>(
+  const [selectedDate] = useState<string>(
     initialDate || new Date().toISOString().split('T')[0]
   );
   const [specialRequests, setSpecialRequests] = useState<string>('');
@@ -75,7 +75,7 @@ export default function TableMap({
     if (turni.length > 0 && selectedTurno === 0) {
       setSelectedTurno(turni[0].idTurno);
     }
-  }, [turni]);
+  }, [turni, selectedTurno]);
 
   useEffect(() => {
     async function updateAvailability() {

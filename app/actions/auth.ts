@@ -21,7 +21,7 @@ export async function loginAction(formData: FormData) {
 
   const db = getDb();
   try {
-    const user = db.prepare('SELECT * FROM Account WHERE email = ? AND password = ?').get(email, password) as any;
+    const user = db.prepare('SELECT * FROM Account WHERE email = ? AND password = ?').get(email, password) as { idAccount: number } | undefined;
     
     if (!user) {
       return { success: false, error: 'Credenziali non valide o utente inesistente.' };
@@ -100,7 +100,7 @@ export async function registerAction(formData: FormData) {
 
     return { success: true, role };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(error);
     return { success: false, error: 'Errore inaspettato durante la registrazione.' };
   } finally {

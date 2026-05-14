@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Lock, Mail, User, Phone, KeyRound } from 'lucide-react';
+import { Lock, Mail, User, Phone, KeyRound } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { loginAction, registerAction } from '@/app/actions/auth';
 

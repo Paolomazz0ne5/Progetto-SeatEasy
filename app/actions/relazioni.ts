@@ -73,7 +73,7 @@ export async function sendChatMessage(idPrenotazione: number, text: string) {
     `).run(idPrenotazione, text, new Date().toISOString());
     revalidatePath('/gestore/relazioni');
     return { success: true };
-  } catch (error) {
+  } catch {
     return { success: false, error: 'Errore invio messaggio' };
   } finally {
     db.close();

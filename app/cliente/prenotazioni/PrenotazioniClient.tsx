@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Calendar, Clock, MapPin, Users, Edit, Trash2, Star, MessageSquarePlus } from 'lucide-react';
 import CancelButton from './CancelButton';
-import ReviewModal from '@/components/ReviewModal';
+import dynamic from 'next/dynamic';
+const ReviewModal = dynamic(() => import('@/components/ReviewModal'), { ssr: false });
 import { deleteReview } from '@/app/actions/cliente';
 import { useRouter } from 'next/navigation';
 

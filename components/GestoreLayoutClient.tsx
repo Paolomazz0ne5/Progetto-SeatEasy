@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Plus, Edit3, Trash2, Save, X, Grid, LayoutDashboard, Link2, Unlink } from 'lucide-react';
+import { Plus, Edit3, Trash2, Save, Grid, LayoutDashboard, Link2, Unlink } from 'lucide-react';
 import { createSala, deleteSala, createTavolo, updateTavolo, deleteTavolo, linkTavoli, unlinkTavolo } from '@/app/actions/layoutActions';
 
 type Tavolo = {
@@ -22,7 +22,7 @@ type Sala = {
 };
 
 export default function GestoreLayoutClient({ initialSale, idRistorante }: { initialSale: Sala[], idRistorante: number }) {
-  const [sale, setSale] = useState<Sala[]>(initialSale);
+  const [sale] = useState<Sala[]>(initialSale);
   const [activeSalaId, setActiveSalaId] = useState<number | null>(initialSale.length > 0 ? initialSale[0].idSala : null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isLinkMode, setIsLinkMode] = useState(false);
@@ -437,7 +437,7 @@ export default function GestoreLayoutClient({ initialSale, idRistorante }: { ini
                       <Trash2 size={16} /> Elimina Tavolo
                     </button>
                     {tavoloModal.data?.idGruppo && (
-                      <button onClick={() => handleUnlinkTavolo(tavoloModal.data?.idTavolo!)} disabled={loading} className="px-4 py-2 text-orange-500 font-bold hover:bg-orange-50 focus:bg-orange-50 rounded-xl transition flex items-center gap-2 text-sm">
+                      <button onClick={() => handleUnlinkTavolo(tavoloModal.data!.idTavolo!)} disabled={loading} className="px-4 py-2 text-orange-500 font-bold hover:bg-orange-50 focus:bg-orange-50 rounded-xl transition flex items-center gap-2 text-sm">
                         <Unlink size={16} /> Separa dal Gruppo
                       </button>
                     )}

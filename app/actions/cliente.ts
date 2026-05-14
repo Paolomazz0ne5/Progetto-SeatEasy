@@ -196,7 +196,7 @@ export async function updateReservation(idPrenotazione: number, data: {
 
     revalidatePath('/cliente/prenotazioni');
     return { success: true };
-  } catch (error) {
+  } catch {
     return { success: false, error: 'Errore durante la modifica.' };
   } finally {
     db.close();

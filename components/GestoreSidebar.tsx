@@ -3,7 +3,7 @@
 import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { LayoutDashboard, ArrowLeft, Grid, Clock, MessageSquareHeart, User, LogOut, Image as ImageIcon } from 'lucide-react';
+import { LayoutDashboard, Grid, Clock, MessageSquareHeart, User, LogOut, Image as ImageIcon } from 'lucide-react';
 import { logoutAction } from '@/app/actions/auth';
 import Logo from '@/components/Logo';
 

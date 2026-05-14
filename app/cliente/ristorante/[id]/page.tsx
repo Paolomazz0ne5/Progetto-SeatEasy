@@ -1,10 +1,12 @@
 import Database from 'better-sqlite3';
 import path from 'path';
-import Link from 'next/link';
+
 import { cookies } from 'next/headers';
 import Navbar from '@/components/Navbar';
-import TableMap from '@/components/TableMap';
-import RestaurantGallery from '@/components/RestaurantGallery';
+import nextDynamic from 'next/dynamic';
+
+const TableMap = nextDynamic(() => import('@/components/TableMap'));
+const RestaurantGallery = nextDynamic(() => import('@/components/RestaurantGallery'));
 
 export const dynamic = 'force-dynamic';
 export default async function RistoranteDettaglio({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ pax?: string; data?: string }> }) {

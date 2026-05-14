@@ -1,5 +1,5 @@
 import Navbar from '@/components/Navbar';
-import { getMyReservations, getRestaurants } from '@/app/actions/cliente';
+import { getMyReservations } from '@/app/actions/cliente';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { Calendar } from 'lucide-react';
