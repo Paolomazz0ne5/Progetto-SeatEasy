@@ -66,7 +66,7 @@ export default function TableMap({
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
-  // Temporary toast for minimum-capacity blocks
+  // Toast temporaneo per avvisi di capacità minima
   const [minToast, setMinToast] = useState<string | null>(null);
 
   const router = useRouter();
@@ -84,7 +84,7 @@ export default function TableMap({
       const updated = await getAvailableTables(idRistorante, selectedDate, selectedTurno, selectedTime);
       setTavoli(updated);
       setLoading(false);
-      // Deselect any tables that are no longer free
+      // Deseleziona eventuali tavoli che non sono più liberi
       setSelectedTavoli(prev =>
         prev.filter(sel => {
           const t = updated.find(u => u.idTavolo === sel.idTavolo);
@@ -95,7 +95,7 @@ export default function TableMap({
     updateAvailability();
   }, [selectedTurno, selectedDate, selectedTime, idRistorante]);
 
-  // Derived values
+  // Valori derivati
   const selectedIds = new Set(selectedTavoli.map(t => t.idTavolo));
   const totalPostiSelezione = selectedTavoli.reduce((s, t) => s + t.posti, 0);
   const isFulfilled = pax !== undefined && totalPostiSelezione >= pax;
@@ -109,7 +109,7 @@ export default function TableMap({
   const handleTableClick = (tavolo: Tavolo) => {
     if (tavolo.stato !== 'Libero') return;
 
-    // Check if the table (or its group) can possibly fit the pax
+    // Controlla se il tavolo (o il suo gruppo) può ospitare il numero di persone (pax)
     if (pax !== undefined) {
       const groupTables = tavolo.idGruppo
         ? tavoli.filter(t => t.idGruppo === tavolo.idGruppo && t.stato === 'Libero')
@@ -134,12 +134,12 @@ export default function TableMap({
         return prev;
       }
 
-      // Deselect
+      // Deseleziona se già selezionato
       if (isAlreadySelected) {
         return prev.filter(t => t.idTavolo !== tavolo.idTavolo);
       }
 
-      // Build the hypothetical new selection
+      // Costruisce la nuova selezione ipotetica
       let nextSelection: Tavolo[];
       if (!tavolo.idGruppo) {
         nextSelection = [tavolo];
@@ -150,8 +150,8 @@ export default function TableMap({
           : [tavolo];
       }
 
-      // Validate postiMinimi:
-      // pax must be >= sum of postiMinimi of all tables in new selection
+      // Validazione postiMinimi:
+      // pax deve essere >= alla somma dei postiMinimi di tutti i tavoli nella nuova selezione
       if (pax !== undefined) {
         const totalMin = nextSelection.reduce((s, t) => s + (t.postiMinimi ?? 1), 0);
         if (pax < totalMin) {
@@ -159,9 +159,9 @@ export default function TableMap({
           const msg = isSingle
             ? `Per prenotare questo tavolo è richiesto un minimo di ${tavolo.postiMinimi} persone.`
             : `Per unire questi tavoli è richiesto un minimo di ${totalMin} persone totali.`;
-          // Schedule toast (can't call setState inside setState updater synchronously)
+          // Pianifica il toast (evita di chiamare setState in modo sincrono nell'updater)
           setTimeout(() => showMinToast(msg), 0);
-          return prev; // no change
+          return prev; // Nessuna modifica
         }
       }
 
@@ -222,14 +222,14 @@ export default function TableMap({
   return (
     <div className="bg-white border border-[#F5CBA7] rounded-3xl p-6 md:p-8 shadow-md relative overflow-hidden">
 
-      {/* Toast message */}
+      {/* Messaggio Toast generico (Successo/Errore) */}
       {message && (
         <div className={`absolute top-0 left-0 w-full p-4 text-center font-bold z-20 animate-in slide-in-from-top duration-300 ${message.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
           {message.text}
         </div>
       )}
 
-      {/* Minimum capacity toast */}
+      {/* Toast per la capacità minima */}
       {minToast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-gray-900 text-white px-5 py-3 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-4 duration-300 max-w-sm text-sm font-semibold">
           <span className="text-xl">🚫</span>
@@ -237,7 +237,7 @@ export default function TableMap({
         </div>
       )}
 
-      {/* Payment Modal */}
+      {/* Modale per il pagamento della caparra */}
       {showPaymentModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-white rounded-[2.5rem] p-8 md:p-10 max-w-md w-full shadow-2xl border-2 border-[#F5CBA7]/30">
@@ -299,7 +299,7 @@ export default function TableMap({
             <h2 className="text-3xl font-black text-[#781D2D] tracking-tight">Prenota il tuo Tavolo</h2>
             <p className="text-[#D35400] font-medium text-sm mt-1">Seleziona uno o più tavoli liberi sulla mappa, poi conferma.</p>
           </div>
-          {/* Legend */}
+          {/* Legenda dei colori dei tavoli */}
           <div className="flex flex-wrap gap-3 text-[10px] font-black uppercase tracking-widest bg-gray-50 px-4 py-2 rounded-full border border-gray-100">
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 bg-green-500 rounded-full"></span>
@@ -320,7 +320,7 @@ export default function TableMap({
           </div>
         </div>
 
-        {/* Read-only reservation summary */}
+        {/* Riepilogo della prenotazione (sola lettura) */}
         <div className="flex flex-col md:flex-row items-center gap-6 bg-[#FDF1E9]/50 px-6 py-4 rounded-3xl border border-[#F5CBA7]/30 mb-8">
           <div className="flex items-center gap-3 text-[#781D2D]">
             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-xl">📅</div>
@@ -339,7 +339,7 @@ export default function TableMap({
           </div>
         </div>
 
-        {/* Turno selector (Remaining Interactive) */}
+        {/* Selettore del turno (Sezione Interattiva) */}
         <div className="bg-[#FDF1E9]/30 p-6 rounded-[2rem] border border-[#F5CBA7]/20">
           <div className="space-y-6">
             <div>
@@ -404,9 +404,9 @@ export default function TableMap({
             const isOccupato = tavolo.stato === 'Occupato' || tavolo.stato === 'Non Disponibile';
             const isLibero = tavolo.stato === 'Libero';
             const isSelected = selectedIds.has(tavolo.idTavolo);
-            // Check if pax respects the minimum for this table
+            // Controlla se i pax rispettano il minimo per questo tavolo
             const belowMinimum = isLibero && pax !== undefined && pax < (tavolo.postiMinimi ?? 1);
-            // Check if the table (or its group) can fit the pax
+            // Controlla se il tavolo (o il suo gruppo) può ospitare i pax richiesti
             const groupTables = tavolo.idGruppo 
               ? tavoli.filter(t => t.idGruppo === tavolo.idGruppo && t.stato === 'Libero')
               : [tavolo];
@@ -439,14 +439,14 @@ export default function TableMap({
               >
                 <span className="block font-black text-xl">T{tavolo.numero}</span>
                 <span className="block text-[10px] uppercase font-bold opacity-75 mt-0.5">{tavolo.posti} posti</span>
-                {/* Minimum capacity indicator */}
+                {/* Indicatore della capacità minima */}
                 {isLibero && (tavolo.postiMinimi ?? 1) > 1 && !isSelected && (
                   <span className={`block text-[9px] font-bold mt-0.5 ${belowMinimum ? 'text-red-400' : 'text-gray-400 opacity-70'}`}>
                     min {tavolo.postiMinimi}
                   </span>
                 )}
 
-                {/* Group badge for linkable tables */}
+                {/* Badge di gruppo per tavoli collegabili */}
                 {tavolo.idGruppo && isLibero && (
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-orange-100 text-orange-600 text-[8px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full border border-orange-200 whitespace-nowrap">
                     🔗
@@ -475,7 +475,7 @@ export default function TableMap({
       {/* ── Live Summary Panel ── */}
       <div className={`transition-all duration-500 mb-6 ${selectedTavoli.length > 0 ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none h-0 overflow-hidden'}`}>
         <div className="bg-gradient-to-r from-[#FDF1E9] to-orange-50 border-2 border-[#F5CBA7] rounded-2xl px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-4">
-          {/* Tables list */}
+          {/* Lista dei tavoli selezionati */}
           <div className="flex-1">
             <p className="text-[10px] font-black text-[#781D2D] uppercase tracking-widest mb-1">Tavoli selezionati</p>
             <div className="flex flex-wrap gap-2">
@@ -493,7 +493,7 @@ export default function TableMap({
             </div>
           </div>
 
-          {/* Capacity counter */}
+          {/* Contatore della capacità totale */}
           <div className="flex items-center gap-4">
             <div className="text-center">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Capacità totale</p>
@@ -513,7 +513,7 @@ export default function TableMap({
               </div>
             )}
 
-            {/* Status badge */}
+            {/* Badge di stato della prenotazione */}
             <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border-2 ${canBook ? 'bg-green-50 border-green-200 text-green-700' : 'bg-orange-50 border-orange-200 text-orange-700'}`}>
               {canBook ? (
                 <>
