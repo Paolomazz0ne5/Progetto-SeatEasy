@@ -45,6 +45,7 @@ export default function TableMap({
   pax,
   initialDate,
   caparraRichiesta = 0,
+  metodoPagamentoPredefinito,
 }: {
   initialTavoli: Tavolo[];
   idRistorante: number;
@@ -52,6 +53,7 @@ export default function TableMap({
   pax?: number;
   initialDate?: string;
   caparraRichiesta?: number;
+  metodoPagamentoPredefinito?: string;
 }) {
   const [tavoli, setTavoli] = useState<Tavolo[]>(initialTavoli);
   const [selectedTavoli, setSelectedTavoli] = useState<Tavolo[]>([]);
@@ -250,6 +252,29 @@ export default function TableMap({
               <h3 className="text-2xl font-black text-[#781D2D] text-center">Pagamento Caparra</h3>
               <p className="text-[#D35400] font-bold text-center mt-1">Importo: €{caparraRichiesta.toFixed(2)}</p>
             </div>
+
+            {metodoPagamentoPredefinito && metodoPagamentoPredefinito !== "" && (
+              <div className="mb-8 p-5 bg-[#FDF1E9] rounded-2xl border-2 border-[#F5CBA7] flex items-center justify-between shadow-sm animate-in fade-in zoom-in duration-500">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white rounded-xl shadow-md flex items-center justify-center text-2xl border border-[#F5CBA7]/30">
+                    {metodoPagamentoPredefinito === 'Apple Pay' ? '🍎' : 
+                     metodoPagamentoPredefinito === 'Google Pay' ? '🔍' :
+                     metodoPagamentoPredefinito === 'Revolut' ? 'R' :
+                     metodoPagamentoPredefinito === 'PayPal' ? 'P' : '💳'}
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-[#D35400] uppercase tracking-[0.15em] mb-0.5">Metodo Predefinito</p>
+                    <p className="font-extrabold text-[#781D2D] text-lg">{metodoPagamentoPredefinito}</p>
+                  </div>
+                </div>
+                <div className="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg ring-4 ring-white">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-4 mb-8">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Numero Carta</label>

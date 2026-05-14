@@ -6,6 +6,7 @@ import Navbar from '@/components/Navbar';
 import TableMap from '@/components/TableMap';
 import RestaurantGallery from '@/components/RestaurantGallery';
 import { ensureGalleriaTable } from '@/app/actions/ristoranti';
+import { getClientProfile } from '@/app/actions/cliente';
 
 export const dynamic = 'force-dynamic';
 export default async function RistoranteDettaglio({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ pax?: string; data?: string }> }) {
@@ -16,6 +17,7 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
 
   const cookieStore = await cookies();
   const isLoggedIn = cookieStore.has('seateasy_session');
+  const profile = isLoggedIn ? await getClientProfile() : null;
 
   const dbPath = path.resolve(process.cwd(), 'database.db');
   const db = new Database(dbPath);
@@ -146,6 +148,7 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
               pax={pax}
               initialDate={data}
               caparraRichiesta={Number(ristorante.caparraRichiesta || 0)}
+              metodoPagamentoPredefinito={profile?.metodoPagamentoPredefinito}
             />
           </section>
 

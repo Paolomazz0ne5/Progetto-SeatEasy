@@ -11,6 +11,7 @@ export interface Profile {
   email: string;
   telefono: string | null;
   richiesteSpeciali: string | null;
+  metodoPagamentoPredefinito: string | null;
   dataCreazione: string;
 }
 
@@ -27,6 +28,7 @@ export default function ProfiloClient({ profile }: { profile: Profile }) {
     email: profile.email,
     telefono: profile.telefono || "",
     richiesteSpeciali: profile.richiesteSpeciali || "",
+    metodoPagamentoPredefinito: profile.metodoPagamentoPredefinito || "",
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -172,21 +174,42 @@ export default function ProfiloClient({ profile }: { profile: Profile }) {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-[#781D2D]/60 uppercase tracking-wider">Richieste Speciali / Allergie</label>
-              {isEditing ? (
-                <textarea
-                  name="richiesteSpeciali"
-                  value={formData.richiesteSpeciali}
-                  onChange={handleChange}
-                  rows={4}
-                  className="w-full bg-[#FFFDFB] border border-[#F5CBA7] rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#781D2D] focus:border-transparent transition-all outline-none resize-none"
-                  placeholder="Es. Allergia alle noci, preferenza tavolo vicino alla finestra..."
-                />
-              ) : (
-                <p className="text-lg font-medium text-[#2D1B1E] leading-relaxed bg-[#F5CBA7]/10 p-6 rounded-2xl border border-[#F5CBA7]/20 italic">
-                  {profile.richiesteSpeciali || "Nessuna richiesta speciale indicata."}
-                </p>
+            <div className="space-y-4">
+              <label className="text-sm font-bold text-[#781D2D]/60 uppercase tracking-wider">Metodo di Pagamento Predefinito</label>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                {[
+                  { id: 'Apple Pay', name: 'Apple Pay', icon: '🍎' },
+                  { id: 'Google Pay', name: 'Google Pay', icon: '🔍' },
+                  { id: 'Revolut', name: 'Revolut', icon: 'R' },
+                  { id: 'PayPal', name: 'PayPal', icon: 'P' },
+                  { id: 'Card', name: 'Carta', icon: '💳' }
+                ].map((method) => (
+                  <button
+                    key={method.id}
+                    type="button"
+                    onClick={() => {
+                      if (isEditing) {
+                        setFormData({ ...formData, metodoPagamentoPredefinito: method.id });
+                      }
+                    }}
+                    disabled={!isEditing && formData.metodoPagamentoPredefinito !== method.id}
+                    className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${
+                      formData.metodoPagamentoPredefinito === method.id
+                        ? 'border-[#781D2D] bg-[#781D2D]/5 text-[#781D2D] shadow-inner'
+                        : isEditing 
+                          ? 'border-[#F5CBA7]/30 bg-white text-gray-400 hover:border-[#F5CBA7]'
+                          : 'hidden'
+                    }`}
+                  >
+                    <span className="text-2xl mb-2">{method.icon}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-tight">{method.name}</span>
+                  </button>
+                ))}
+              </div>
+              {!isEditing && !formData.metodoPagamentoPredefinito && (
+                 <p className="text-lg font-medium text-[#2D1B1E] leading-relaxed bg-[#F5CBA7]/10 p-6 rounded-2xl border border-[#F5CBA7]/20 italic">
+                   Nessun metodo di pagamento predefinito selezionato.
+                 </p>
               )}
             </div>
 
