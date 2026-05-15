@@ -9,6 +9,12 @@ function getDb() {
   return new Database(dbPath);
 }
 
+function updateSalaCapacita(db: any, idSala: number) {
+  const result = db.prepare('SELECT SUM(posti) as totale FROM Tavolo WHERE idSala = ?').get(idSala) as { totale: number | null };
+  const capacita = result.totale || 0;
+  db.prepare('UPDATE Sala SET capacita = ? WHERE idSala = ?').run(capacita, idSala);
+}
+
 // SALE
 export async function createSala(nome: string, idRistorante: number) {
   const db = getDb();
@@ -48,6 +54,7 @@ export async function createTavolo(idSala: number, numero: number, posti: number
   const db = getDb();
   try {
     db.prepare('INSERT INTO Tavolo (idSala, numero, posti, postiMinimi, stato) VALUES (?, ?, ?, ?, ?)').run(idSala, numero, posti, postiMinimi, 'Libero');
+    updateSalaCapacita(db, idSala);
     revalidatePath('/gestore/sala-layout');
     return { success: true };
   } catch (error: any) {
@@ -61,7 +68,11 @@ export async function createTavolo(idSala: number, numero: number, posti: number
 export async function updateTavolo(idTavolo: number, numero: number, posti: number, postiMinimi: number) {
   const db = getDb();
   try {
+    const table = db.prepare('SELECT idSala FROM Tavolo WHERE idTavolo = ?').get(idTavolo) as { idSala: number } | undefined;
     db.prepare('UPDATE Tavolo SET numero = ?, posti = ?, postiMinimi = ? WHERE idTavolo = ?').run(numero, posti, postiMinimi, idTavolo);
+    if (table) {
+      updateSalaCapacita(db, table.idSala);
+    }
     revalidatePath('/gestore/sala-layout');
     return { success: true };
   } catch (error: any) {
@@ -75,7 +86,11 @@ export async function updateTavolo(idTavolo: number, numero: number, posti: numb
 export async function deleteTavolo(idTavolo: number) {
   const db = getDb();
   try {
+    const table = db.prepare('SELECT idSala FROM Tavolo WHERE idTavolo = ?').get(idTavolo) as { idSala: number } | undefined;
     db.prepare('DELETE FROM Tavolo WHERE idTavolo = ?').run(idTavolo);
+    if (table) {
+      updateSalaCapacita(db, table.idSala);
+    }
     revalidatePath('/gestore/sala-layout');
     return { success: true };
   } catch (error: any) {
