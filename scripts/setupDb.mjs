@@ -22,14 +22,13 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS GestoreRistorante (
       idAccount INTEGER PRIMARY KEY,
-      ruolo TEXT NOT NULL,
-      PIN TEXT,
+      pin TEXT,
       FOREIGN KEY (idAccount) REFERENCES Account(idAccount) ON DELETE CASCADE
   );
 
   CREATE TABLE IF NOT EXISTS Cliente (
       idAccount INTEGER PRIMARY KEY,
-      richiesteSpeciali TEXT,
+      metodoPagamentoPredefinito TEXT,
       FOREIGN KEY (idAccount) REFERENCES Account(idAccount) ON DELETE CASCADE
   );
 
@@ -53,7 +52,6 @@ db.exec(`
       idRistorante INTEGER NOT NULL,
       nome TEXT NOT NULL,
       capacita INTEGER NOT NULL,
-      layoutDescrizione TEXT,
       attiva INTEGER DEFAULT 1,
       FOREIGN KEY (idRistorante) REFERENCES Ristorante(idRistorante) ON DELETE CASCADE
   );
@@ -74,7 +72,6 @@ db.exec(`
       idRistorante INTEGER NOT NULL,
       oraInizio TEXT NOT NULL,
       oraFine TEXT NOT NULL,
-      durataMediaServizio INTEGER,
       FOREIGN KEY (idRistorante) REFERENCES Ristorante(idRistorante) ON DELETE CASCADE
   );
 
@@ -82,7 +79,6 @@ db.exec(`
       idTurno INTEGER PRIMARY KEY AUTOINCREMENT,
       idOrario INTEGER NOT NULL,
       nomeTurno TEXT NOT NULL,
-      maxPrenotazioni INTEGER,
       durataMedia INTEGER DEFAULT 90,
       FOREIGN KEY (idOrario) REFERENCES Orario(idOrario) ON DELETE CASCADE
   );
@@ -115,7 +111,6 @@ db.exec(`
       idPrenotazione INTEGER NOT NULL,
       importo REAL NOT NULL,
       dataPagamento TEXT NOT NULL,
-      ricevuta TEXT,
       metodoPagamento TEXT,
       FOREIGN KEY (idPrenotazione) REFERENCES Prenotazione(idPrenotazione) ON DELETE CASCADE
   );
@@ -146,7 +141,7 @@ if (count.count === 0) {
     const insertAccount = db.prepare('INSERT INTO Account (email, password, nome, cognome) VALUES (?, ?, ?, ?)');
     const resAdmin = insertAccount.run('admin@seateasy.it', 'hash_pass', 'Mario', 'Gestore');
 
-    db.prepare('INSERT INTO GestoreRistorante (idAccount, ruolo, PIN) VALUES (?, ?, ?)').run(resAdmin.lastInsertRowid, 'Admin', '1234');
+    db.prepare('INSERT INTO GestoreRistorante (idAccount, pin) VALUES (?, ?)').run(resAdmin.lastInsertRowid, '1234');
 
     // 2. Creo il Ristorante
     const insertRisto = db.prepare('INSERT INTO Ristorante (idGestoreRistorante, nome, indirizzo, politicaNoShow, caparraRichiesta, tipologia) VALUES (?, ?, ?, ?, ?, ?)');
@@ -160,7 +155,7 @@ if (count.count === 0) {
 
     // 4. Creo un Cliente finto
     const resCliente = insertAccount.run('cliente@email.it', 'hash_pass', 'Luigi', 'Bianchi');
-    db.prepare('INSERT INTO Cliente (idAccount, richiesteSpeciali) VALUES (?, ?)').run(resCliente.lastInsertRowid, 'Allergia alle noci');
+    db.prepare('INSERT INTO Cliente (idAccount) VALUES (?)').run(resCliente.lastInsertRowid);
 
     console.log('Dati di prova (Ristorante, Sale, Tavoli e Clienti) inseriti con successo!');
 }

@@ -4,8 +4,8 @@ const db = new Database('database.db');
 // Insert a Turno for it
 try {
   db.prepare(`
-    INSERT INTO Turno (idOrario, nomeTurno, maxPrenotazioni) 
-    VALUES (2, 'Pranzo', 20)
+    INSERT INTO Turno (idOrario, nomeTurno) 
+    VALUES (2, 'Pranzo')
   `).run();
   console.log('Turno Pranzo inserito');
 } catch (e) {

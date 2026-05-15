@@ -234,7 +234,7 @@ export async function getClientProfile() {
   const db = getDb();
   try {
     return db.prepare(`
-      SELECT A.*, C.richiesteSpeciali, C.metodoPagamentoPredefinito
+      SELECT A.*, C.metodoPagamentoPredefinito
       FROM Account A
       JOIN Cliente C ON A.idAccount = C.idAccount
       WHERE A.idAccount = ?
@@ -249,7 +249,6 @@ export async function updateClientProfile(data: {
   cognome: string,
   email: string,
   telefono: string,
-  richiesteSpeciali?: string,
   metodoPagamentoPredefinito?: string
 }) {
   const cookieStore = await cookies();
@@ -268,9 +267,9 @@ export async function updateClientProfile(data: {
 
       db.prepare(`
         UPDATE Cliente
-        SET richiesteSpeciali = ?, metodoPagamentoPredefinito = ?
+        SET metodoPagamentoPredefinito = ?
         WHERE idAccount = ?
-      `).run(data.richiesteSpeciali || null, data.metodoPagamentoPredefinito || null, idCliente);
+      `).run(data.metodoPagamentoPredefinito || null, idCliente);
     });
 
     transaction();

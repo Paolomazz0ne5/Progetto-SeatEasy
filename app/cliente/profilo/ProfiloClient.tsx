@@ -10,7 +10,6 @@ export interface Profile {
   cognome: string;
   email: string;
   telefono: string | null;
-  richiesteSpeciali: string | null;
   metodoPagamentoPredefinito: string | null;
   dataCreazione: string;
 }
@@ -27,7 +26,6 @@ export default function ProfiloClient({ profile }: { profile: Profile }) {
     cognome: profile.cognome,
     email: profile.email,
     telefono: profile.telefono || "",
-    richiesteSpeciali: profile.richiesteSpeciali || "",
     metodoPagamentoPredefinito: profile.metodoPagamentoPredefinito || "",
   });
 

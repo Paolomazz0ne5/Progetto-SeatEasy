@@ -15,8 +15,8 @@ if (countOrario.c === 0) {
   const resOrario = insertOrario.run(1, '19:00', '23:30', 90);
   idOrario = resOrario.lastInsertRowid;
   
-  const insertTurno = db.prepare('INSERT INTO Turno (idOrario, nomeTurno, maxPrenotazioni) VALUES (?, ?, ?)');
-  const resTurno = insertTurno.run(idOrario, 'Cena', 20);
+  const insertTurno = db.prepare('INSERT INTO Turno (idOrario, nomeTurno) VALUES (?, ?)');
+  const resTurno = insertTurno.run(idOrario, 'Cena');
   idTurno = resTurno.lastInsertRowid;
 } else {
   // Grab the existing Turno
@@ -26,7 +26,7 @@ if (countOrario.c === 0) {
 
 // 2. Create more Clients
 const insertAccount = db.prepare('INSERT INTO Account (email, password, nome, cognome, telefono) VALUES (?, ?, ?, ?, ?)');
-const insertCliente = db.prepare('INSERT INTO Cliente (idAccount, richiesteSpeciali) VALUES (?, ?)');
+const insertCliente = db.prepare('INSERT INTO Cliente (idAccount) VALUES (?)');
 
 // Check if test users exist
 const existingClients = db.prepare("SELECT idAccount FROM Account WHERE email LIKE '%@seed.test'").all();
@@ -40,7 +40,7 @@ if (existingClients.length === 0) {
   let clientIds = [];
   for (const client of clients) {
     const resA = insertAccount.run(client.e, client.p, client.n, client.c, client.t);
-    insertCliente.run(resA.lastInsertRowid, client.rs);
+    insertCliente.run(resA.lastInsertRowid);
     clientIds.push(resA.lastInsertRowid);
   }
 
