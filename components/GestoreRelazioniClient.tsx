@@ -64,7 +64,7 @@ export default function GestoreRelazioniClient({
               <div className="flex items-start justify-between gap-6 p-4 rounded-2xl hover:bg-[#FDF1E9]/30 transition-colors">
                 <div className="flex-1">
                   <h4 className="font-bold text-gray-800 text-base">Conferma Prenotazione</h4>
-                  <p className="text-sm text-gray-500 mt-1">Invia automaticamente una ricevuta PDF via Email appena il tavolo viene confermato.</p>
+                  <p className="text-sm text-gray-500 mt-1">Invia automaticamente una notifica via Email appena il tavolo viene confermato.</p>
                 </div>
                 <button onClick={() => setAutoConf(!autoConf)} className={`transition-colors flex-shrink-0 ${autoConf ? 'text-green-500' : 'text-gray-300'}`}>
                   {autoConf ? <ToggleRight size={44} /> : <ToggleLeft size={44} />}

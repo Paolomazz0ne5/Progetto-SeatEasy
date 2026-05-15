@@ -45,13 +45,13 @@ export async function ensureTurnoColumns() {
 }
 
 // ORARI (FASCE)
-export async function createOrario(idRistorante: number, nome: string, oraInizio: string, oraFine: string, durataMediaServizio: number, durataMedia: number) {
+export async function createOrario(idRistorante: number, nome: string, oraInizio: string, oraFine: string, durataMedia: number) {
   const db = getDb();
   try {
     const info = db.prepare(`
-      INSERT INTO Orario (idRistorante, nome, oraInizio, oraFine, durataMediaServizio)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(idRistorante, nome, oraInizio, oraFine, durataMediaServizio);
+      INSERT INTO Orario (idRistorante, nome, oraInizio, oraFine)
+      VALUES (?, ?, ?, ?)
+    `).run(idRistorante, nome, oraInizio, oraFine);
     
     // Automatically create a default Turno for this Orario so it shows up in bookings
     db.prepare(`
@@ -69,14 +69,14 @@ export async function createOrario(idRistorante: number, nome: string, oraInizio
   }
 }
 
-export async function updateOrario(idOrario: number, nome: string, oraInizio: string, oraFine: string, durataMediaServizio: number, durataMedia: number) {
+export async function updateOrario(idOrario: number, nome: string, oraInizio: string, oraFine: string, durataMedia: number) {
   const db = getDb();
   try {
     db.prepare(`
       UPDATE Orario 
-      SET nome = ?, oraInizio = ?, oraFine = ?, durataMediaServizio = ?
+      SET nome = ?, oraInizio = ?, oraFine = ?
       WHERE idOrario = ?
-    `).run(nome, oraInizio, oraFine, durataMediaServizio, idOrario);
+    `).run(nome, oraInizio, oraFine, idOrario);
 
     // Also update the default Turno's duration (the one with the same name as the Orario)
     db.prepare(`

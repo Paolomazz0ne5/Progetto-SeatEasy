@@ -9,7 +9,6 @@ type Orario = {
   nome: string;
   oraInizio: string;
   oraFine: string;
-  durataMediaServizio: number;
   turni?: any[];
 };
 
@@ -34,9 +33,9 @@ export default function GestoreOrariClient({ initialOrari, idRistorante }: { ini
     setLoading(true);
     const durata = Number(orarioForm.durataMedia) || 90;
     if (editOrarioId) {
-      await updateOrario(editOrarioId, orarioForm.nome, orarioForm.oraInizio, orarioForm.oraFine, 0, durata);
+      await updateOrario(editOrarioId, orarioForm.nome, orarioForm.oraInizio, orarioForm.oraFine, durata);
     } else {
-      await createOrario(idRistorante, orarioForm.nome, orarioForm.oraInizio, orarioForm.oraFine, 0, durata);
+      await createOrario(idRistorante, orarioForm.nome, orarioForm.oraInizio, orarioForm.oraFine, durata);
     }
     window.location.reload();
   };

@@ -71,8 +71,8 @@ export async function markNoShow(idPrenotazione: number, applyPenalty: boolean) 
         
         // We could also record it in Pagamento table, but updating notes is sufficient for visual
         db.prepare(`
-          INSERT INTO Pagamento (idPrenotazione, importo, dataPagamento, ricevuta, metodoPagamento)
-          VALUES (?, (SELECT caparraPagata FROM Prenotazione WHERE idPrenotazione = ?), date('now'), 'Trattenuta Penale NoShow', 'Sistema')
+          INSERT INTO Pagamento (idPrenotazione, importo, dataPagamento, metodoPagamento)
+          VALUES (?, (SELECT caparraPagata FROM Prenotazione WHERE idPrenotazione = ?), date('now'), 'Sistema')
         `).run(idPrenotazione, idPrenotazione);
       }
     });

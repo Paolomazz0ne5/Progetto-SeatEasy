@@ -4,10 +4,11 @@ import React, { useState, useTransition, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Plus, X, Store, MapPin, Phone, Mail, ChevronRight,
+  Plus, X, Store, MapPin, Phone, Mail, ChevronRight, KeyRound,
   FileText, Banknote, Loader2, AlertCircle, Pencil, Image as ImageIcon, Trash2
 } from 'lucide-react';
 import { addRistorante, updateRistorante, Ristorante } from '@/app/actions/ristoranti';
+import { verifyPinAction, checkHasPinAction } from '@/app/actions/auth';
 
 // ─── Shared form fields ───────────────────────────────────────────────────────
 function RistoranteFormFields({ defaults }: { defaults?: Partial<Ristorante> }) {
@@ -346,13 +347,105 @@ function EditRistoranteModal({
   );
 }
 
+// ─── Pin Prompt Modal ──────────────────────────────────────────────────────────
+function PinPromptModal({
+  onClose,
+  onSuccess,
+  error: initialError,
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+  error?: string | null;
+}) {
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState<string | null>(initialError || null);
+  const [isPending, startTransition] = useTransition();
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (pin.length < 4) {
+      setError('Il PIN deve essere di almeno 4 cifre.');
+      return;
+    }
+
+    setError(null);
+    startTransition(async () => {
+      const result = await verifyPinAction(pin);
+      if (result.success) {
+        onSuccess();
+      } else {
+        setError(result.error || 'PIN non corretto.');
+      }
+    });
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl p-8 animate-in zoom-in-95 duration-300">
+        <div className="flex flex-col items-center text-center">
+          <div className="w-16 h-16 rounded-2xl bg-[#fdf1e9] flex items-center justify-center mb-6 text-[#781D2D]">
+            <KeyRound size={32} />
+          </div>
+          <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Inserisci il PIN</h2>
+          <p className="text-gray-500 text-sm mb-8">
+            Per accedere alla gestione del ristorante è richiesto il PIN di sicurezza.
+          </p>
+
+          {error && (
+            <div className="w-full mb-6 p-3 bg-red-50 border border-red-100 text-red-600 rounded-xl text-xs font-bold flex items-center gap-2 animate-shake">
+              <AlertCircle size={14} />
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="w-full space-y-6">
+            <div className="flex justify-center gap-2">
+              <input
+                type="text"
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                maxLength={6}
+                placeholder="0000"
+                autoFocus
+                className="w-full text-center text-4xl font-mono tracking-[0.3em] py-5 bg-white border-4 border-gray-900 rounded-2xl text-gray-900 focus:outline-none focus:ring-8 focus:ring-gray-100 transition-all shadow-lg"
+              />
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <button
+                type="submit"
+                disabled={isPending || pin.length < 4}
+                className="w-full py-4 bg-gradient-to-r from-[#D35400] to-[#781D2D] text-white font-bold rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:transform-none"
+              >
+                {isPending ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Verifica e Accedi'}
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full py-3 text-sm font-bold text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                Annulla
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Card ─────────────────────────────────────────────────────────────────────
 function RistoranteCard({
   ristorante,
   onEdit,
+  onEnter,
 }: {
   ristorante: Ristorante;
   onEdit: (r: Ristorante) => void;
+  onEnter: (id: number) => void;
 }) {
   return (
     <div className="group relative bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col">
@@ -406,13 +499,13 @@ function RistoranteCard({
         </div>
 
         {/* CTA */}
-        <Link
-          href={`/gestore/dashboard?ristorante=${ristorante.idRistorante}`}
+        <button
+          onClick={() => onEnter(ristorante.idRistorante)}
           className="mt-6 w-full inline-flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-[#D35400] to-[#781D2D] text-white text-sm font-bold rounded-xl hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
         >
           Entra nella Gestione
           <ChevronRight size={16} />
-        </Link>
+        </button>
       </div>
     </div>
   );
@@ -422,12 +515,42 @@ function RistoranteCard({
 export default function RistorantiClient({ initialData }: { initialData: Ristorante[] }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingRistorante, setEditingRistorante] = useState<Ristorante | null>(null);
+  const [pinPromptRistoranteId, setPinPromptRistoranteId] = useState<number | null>(null);
+  const [isCheckingPin, setIsCheckingPin] = useState(false);
   const router = useRouter();
 
   function handleSuccess() {
     setShowAddModal(false);
     setEditingRistorante(null);
     router.refresh();
+  }
+
+  async function handleEnterRequest(idRistorante: number) {
+    setIsCheckingPin(true);
+    try {
+      const { hasPin } = await checkHasPinAction();
+      if (!hasPin) {
+        // Se non ha il PIN, entra direttamente
+        router.push(`/gestore/dashboard?ristorante=${idRistorante}`);
+      } else {
+        // Altrimenti chiedi il PIN
+        setPinPromptRistoranteId(idRistorante);
+      }
+    } catch (error) {
+      console.error('Error checking PIN status:', error);
+      // In caso di errore, per sicurezza magari chiediamo comunque o reindirizziamo?
+      // Meglio reindirizzare se non siamo sicuri o mostrare errore.
+      router.push(`/gestore/dashboard?ristorante=${idRistorante}`);
+    } finally {
+      setIsCheckingPin(false);
+    }
+  }
+
+  function handlePinSuccess() {
+    if (pinPromptRistoranteId) {
+      router.push(`/gestore/dashboard?ristorante=${pinPromptRistoranteId}`);
+      setPinPromptRistoranteId(null);
+    }
   }
 
   return (
@@ -476,6 +599,7 @@ export default function RistorantiClient({ initialData }: { initialData: Ristora
               key={r.idRistorante}
               ristorante={r}
               onEdit={setEditingRistorante}
+              onEnter={handleEnterRequest}
             />
           ))}
         </div>
@@ -496,6 +620,20 @@ export default function RistorantiClient({ initialData }: { initialData: Ristora
           onClose={() => setEditingRistorante(null)}
           onSuccess={handleSuccess}
         />
+      )}
+      {/* PIN Prompt modal */}
+      {pinPromptRistoranteId && (
+        <PinPromptModal
+          onClose={() => setPinPromptRistoranteId(null)}
+          onSuccess={handlePinSuccess}
+        />
+      )}
+
+      {/* Loading Overlay for PIN check */}
+      {isCheckingPin && (
+        <div className="fixed inset-0 z-[100] bg-white/20 backdrop-blur-[2px] flex items-center justify-center">
+          <Loader2 className="w-10 h-10 text-[#D35400] animate-spin" />
+        </div>
       )}
     </>
   );

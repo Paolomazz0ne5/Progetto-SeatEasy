@@ -222,11 +222,13 @@ export default function UnifiedAuthPage() {
                 </div>
                 <input 
                    name="pin" 
-                   type="password" 
-                   required={mode === 'register' && role === 'gestore'}
+                   type="text" 
+                   pattern="[0-9]*"
+                   inputMode="numeric"
+                   required={false}
                    maxLength={6}
-                   placeholder="Es: 1234"
-                   className="w-full bg-white border border-red-200 rounded-xl py-2.5 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-[#781D2D] transition-shadow text-gray-900 text-sm font-mono tracking-widest"
+                   placeholder="Es: 1234 (Opzionale)"
+                   className="w-full bg-white border-2 border-gray-900 rounded-xl py-2.5 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-gray-900 transition-shadow text-gray-900 text-sm font-mono tracking-widest"
                 />
               </div>
             </div>
