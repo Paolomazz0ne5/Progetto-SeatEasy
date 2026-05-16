@@ -33,9 +33,9 @@ export default async function GestoreDashboard({
   // 3. Verify this restaurant belongs to the logged-in gestore
   const ownership = db
     .prepare(
-      'SELECT idRistorante, nome FROM Ristorante WHERE idRistorante = ? AND idGestoreRistorante = ?'
+      'SELECT idRistorante, nome, penaleNoShow, messaggioPenale FROM Ristorante WHERE idRistorante = ? AND idGestoreRistorante = ?'
     )
-    .get(ristoranteId, Number(sessionId)) as { idRistorante: number; nome: string } | undefined;
+    .get(ristoranteId, Number(sessionId)) as { idRistorante: number; nome: string; penaleNoShow: number; messaggioPenale: string | null } | undefined;
 
   if (!ownership) {
     db.close();
@@ -107,6 +107,7 @@ export default async function GestoreDashboard({
         <GestoreDashboardClient
           reservations={rawReservations}
           stats={{ attive, noShows }}
+          penaleInfo={{ amount: ownership.penaleNoShow, message: ownership.messaggioPenale }}
         />
       </div>
     </>

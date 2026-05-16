@@ -28,9 +28,8 @@ export default async function GestoreOrariPage({
   // Fetch all Orari
   const orari = db.prepare('SELECT * FROM Orario WHERE idRistorante = ? ORDER BY oraInizio ASC').all(ristoranteId) as any[];
 
-  // Attach turni
   for (const o of orari) {
-    const turni = db.prepare('SELECT * FROM Turno WHERE idOrario = ? ORDER BY nomeTurno ASC').all(o.idOrario);
+    const turni = db.prepare('SELECT * FROM Turno WHERE idOrario = ? ORDER BY idTurno ASC').all(o.idOrario);
     o.turni = turni;
   }
 

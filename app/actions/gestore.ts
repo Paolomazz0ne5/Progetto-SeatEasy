@@ -62,14 +62,22 @@ export async function updateReservation(
 export async function markNoShow(idPrenotazione: number, applyPenalty: boolean) {
   const db = getDb();
   try {
-    // transaction for marking as noShow and adding a penalty note if needed
+    const resInfo = db.prepare(`
+      SELECT R.penaleNoShow, R.messaggioPenale, R.nome as ristoranteNome, A.email as clienteEmail
+      FROM Prenotazione P
+      JOIN Turno T ON P.idTurno = T.idTurno
+      JOIN Orario O ON T.idOrario = O.idOrario
+      JOIN Ristorante R ON O.idRistorante = R.idRistorante
+      JOIN Account A ON P.idCliente = A.idAccount
+      WHERE P.idPrenotazione = ?
+    `).get(idPrenotazione) as any;
+
     const transaction = db.transaction(() => {
       db.prepare("UPDATE Prenotazione SET stato = 'noShow' WHERE idPrenotazione = ?").run(idPrenotazione);
       
       if (applyPenalty) {
         db.prepare("UPDATE Prenotazione SET noteCliente = noteCliente || ' [PENALE APPLICATA]' WHERE idPrenotazione = ?").run(idPrenotazione);
         
-        // We could also record it in Pagamento table, but updating notes is sufficient for visual
         db.prepare(`
           INSERT INTO Pagamento (idPrenotazione, importo, dataPagamento, metodoPagamento)
           VALUES (?, (SELECT caparraPagata FROM Prenotazione WHERE idPrenotazione = ?), date('now'), 'Sistema')
@@ -78,6 +86,14 @@ export async function markNoShow(idPrenotazione: number, applyPenalty: boolean) 
     });
 
     transaction();
+
+    // Simulazione invio Email
+    if (resInfo) {
+      console.log(`[SIMULATION] Email sent to ${resInfo.clienteEmail} from ${resInfo.ristoranteNome}`);
+      console.log(`Subject: Penale No-Show - ${resInfo.ristoranteNome}`);
+      console.log(`Body: Gentile cliente, a causa della sua mancata presentazione è stata applicata una penale di €${resInfo.penaleNoShow || 0}. ${resInfo.messaggioPenale ? `Nota: ${resInfo.messaggioPenale}` : ''}`);
+    }
+
     revalidatePath('/gestore/dashboard');
     return { success: true };
   } catch (error: any) {

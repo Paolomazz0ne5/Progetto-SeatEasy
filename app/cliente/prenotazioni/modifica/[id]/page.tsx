@@ -29,7 +29,7 @@ export default async function ModificaPrenotazionePage({ params }: { params: Pro
 
   // Get available turns for this restaurant
   const turni = db.prepare(`
-    SELECT T.idTurno, T.nomeTurno, O.oraInizio
+    SELECT T.idTurno, O.nome AS nomeTurno, O.oraInizio
     FROM Turno T
     JOIN Orario O ON T.idOrario = O.idOrario
     WHERE O.idRistorante = ?

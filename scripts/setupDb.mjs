@@ -40,7 +40,9 @@ db.exec(`
       indirizzo TEXT NOT NULL,
       telefono TEXT,
       email TEXT,
-      politicaNoShow TEXT,
+      penaleNoShow REAL DEFAULT 0,
+      messaggioPenale TEXT,
+      pin TEXT,
       caparraRichiesta REAL,
       tipologia TEXT,
       foto_url TEXT,
@@ -61,7 +63,6 @@ db.exec(`
       idSala INTEGER NOT NULL,
       numero INTEGER NOT NULL,
       posti INTEGER NOT NULL,
-      posizione TEXT,
       stato TEXT,
       FOREIGN KEY (idSala) REFERENCES Sala(idSala) ON DELETE CASCADE
   );
@@ -78,7 +79,6 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS Turno (
       idTurno INTEGER PRIMARY KEY AUTOINCREMENT,
       idOrario INTEGER NOT NULL,
-      nomeTurno TEXT NOT NULL,
       durataMedia INTEGER DEFAULT 90,
       FOREIGN KEY (idOrario) REFERENCES Orario(idOrario) ON DELETE CASCADE
   );
@@ -92,7 +92,7 @@ db.exec(`
       numeroPersone INTEGER NOT NULL,
       stato TEXT NOT NULL,
       noteCliente TEXT,
-      caparraPagata INTEGER DEFAULT 0,
+      caparraPagata REAL DEFAULT 0,
       dataCreazione TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (idCliente) REFERENCES Cliente(idAccount) ON DELETE RESTRICT,
       FOREIGN KEY (idTurno) REFERENCES Turno(idTurno) ON DELETE RESTRICT
@@ -120,6 +120,8 @@ db.exec(`
       idPrenotazione INTEGER NOT NULL,
       tipo TEXT,
       messaggio TEXT,
+      destinatario TEXT,
+      canale TEXT,
       dataInvio TEXT,
       statoInvio TEXT,
       FOREIGN KEY (idPrenotazione) REFERENCES Prenotazione(idPrenotazione) ON DELETE CASCADE

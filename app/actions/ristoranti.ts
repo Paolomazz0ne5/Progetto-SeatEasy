@@ -18,7 +18,9 @@ export type Ristorante = {
   indirizzo: string;
   telefono: string | null;
   email: string | null;
-  politicaNoShow: string | null;
+  penaleNoShow: number | null;
+  messaggioPenale: string | null;
+  pin: string | null;
   caparraRichiesta: number | null;
   tipologia: string | null;
   foto_url: string | null;
@@ -30,8 +32,11 @@ export async function ensureRistoranteColumns() {
     const tableInfo = db.prepare("PRAGMA table_info(Ristorante)").all() as any[];
     const columns = tableInfo.map(col => col.name);
 
-    if (!columns.includes('politicaNoShow')) {
-      db.prepare("ALTER TABLE Ristorante ADD COLUMN politicaNoShow TEXT").run();
+    if (!columns.includes('penaleNoShow')) {
+      db.prepare("ALTER TABLE Ristorante ADD COLUMN penaleNoShow REAL DEFAULT 0").run();
+    }
+    if (!columns.includes('messaggioPenale')) {
+      db.prepare("ALTER TABLE Ristorante ADD COLUMN messaggioPenale TEXT").run();
     }
     if (!columns.includes('caparraRichiesta')) {
       db.prepare("ALTER TABLE Ristorante ADD COLUMN caparraRichiesta REAL").run();
@@ -41,6 +46,9 @@ export async function ensureRistoranteColumns() {
     }
     if (!columns.includes('foto_url')) {
       db.prepare("ALTER TABLE Ristorante ADD COLUMN foto_url TEXT").run();
+    }
+    if (!columns.includes('pin')) {
+      db.prepare("ALTER TABLE Ristorante ADD COLUMN pin TEXT").run();
     }
   } catch (err) {
     console.error("Error patching Ristorante table:", err);
@@ -82,7 +90,7 @@ export async function getMyRistoranti(): Promise<{ success: boolean; data?: Rist
   try {
     const rows = db
       .prepare(
-        `SELECT idRistorante, nome, indirizzo, telefono, email, politicaNoShow, caparraRichiesta, tipologia, foto_url
+        `SELECT idRistorante, nome, indirizzo, telefono, email, penaleNoShow, messaggioPenale, pin, caparraRichiesta, tipologia, foto_url
          FROM Ristorante
          WHERE idGestoreRistorante = ?`
       )
@@ -110,7 +118,10 @@ export async function addRistorante(formData: FormData): Promise<{ success: bool
   const indirizzo = (formData.get('indirizzo') as string)?.trim();
   const telefono = (formData.get('telefono') as string)?.trim() || null;
   const email = (formData.get('email') as string)?.trim() || null;
-  const politicaNoShow = (formData.get('politicaNoShow') as string)?.trim() || null;
+  const penaleRaw = formData.get('penaleNoShow') as string;
+  const penaleNoShow = penaleRaw ? parseFloat(penaleRaw) : 0;
+  const messaggioPenale = (formData.get('messaggioPenale') as string)?.trim() || null;
+  const pin = (formData.get('pin') as string)?.trim() || null;
   const caparraRaw = formData.get('caparraRichiesta') as string;
   const caparraRichiesta = caparraRaw ? parseFloat(caparraRaw) : null;
   const tipologia = (formData.get('tipologia') as string)?.trim() || 'Italiano';
@@ -147,9 +158,9 @@ export async function addRistorante(formData: FormData): Promise<{ success: bool
     }
 
     db.prepare(
-      `INSERT INTO Ristorante (idGestoreRistorante, nome, indirizzo, telefono, email, politicaNoShow, caparraRichiesta, tipologia, foto_url)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(Number(sessionId), nome, indirizzo, telefono, email, politicaNoShow, caparraRichiesta, tipologia, foto_url);
+      `INSERT INTO Ristorante (idGestoreRistorante, nome, indirizzo, telefono, email, penaleNoShow, messaggioPenale, pin, caparraRichiesta, tipologia, foto_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(Number(sessionId), nome, indirizzo, telefono, email, penaleNoShow, messaggioPenale, pin, caparraRichiesta, tipologia, foto_url);
 
     revalidatePath('/');
     revalidatePath('/cliente');
@@ -178,7 +189,10 @@ export async function updateRistorante(
   const indirizzo = (formData.get('indirizzo') as string)?.trim();
   const telefono = (formData.get('telefono') as string)?.trim() || null;
   const email = (formData.get('email') as string)?.trim() || null;
-  const politicaNoShow = (formData.get('politicaNoShow') as string)?.trim() || null;
+  const penaleRaw = formData.get('penaleNoShow') as string;
+  const penaleNoShow = penaleRaw ? parseFloat(penaleRaw) : 0;
+  const messaggioPenale = (formData.get('messaggioPenale') as string)?.trim() || null;
+  const pin = (formData.get('pin') as string)?.trim() || null;
   const caparraRaw = formData.get('caparraRichiesta') as string;
   const caparraRichiesta = caparraRaw ? parseFloat(caparraRaw) : null;
   const tipologia = (formData.get('tipologia') as string)?.trim() || 'Italiano';
@@ -234,10 +248,10 @@ export async function updateRistorante(
     const result = db
       .prepare(
         `UPDATE Ristorante
-         SET nome = ?, indirizzo = ?, telefono = ?, email = ?, politicaNoShow = ?, caparraRichiesta = ?, tipologia = ?, foto_url = ?
+         SET nome = ?, indirizzo = ?, telefono = ?, email = ?, penaleNoShow = ?, messaggioPenale = ?, pin = ?, caparraRichiesta = ?, tipologia = ?, foto_url = ?
          WHERE idRistorante = ? AND idGestoreRistorante = ?`
       )
-      .run(nome, indirizzo, telefono, email, politicaNoShow, caparraRichiesta, tipologia, foto_url, idRistorante, Number(sessionId));
+      .run(nome, indirizzo, telefono, email, penaleNoShow, messaggioPenale, pin, caparraRichiesta, tipologia, foto_url, idRistorante, Number(sessionId));
 
     if (result.changes === 0) {
       return { success: false, error: 'Ristorante non trovato o permesso negato.' };

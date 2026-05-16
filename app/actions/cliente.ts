@@ -123,11 +123,20 @@ export async function createReservation(data: {
   const db = getDb();
   try {
     const transaction = db.transaction(() => {
+      // Recupera la caparra richiesta dal ristorante
+      const restaurant = db.prepare(`
+        SELECT caparraRichiesta 
+        FROM Ristorante 
+        WHERE idRistorante = ?
+      `).get(data.idRistorante) as { caparraRichiesta: number | null };
+      
+      const caparraEffettiva = restaurant?.caparraRichiesta || 0;
+
       // 1. Create the reservation
       const res = db.prepare(`
         INSERT INTO Prenotazione (idCliente, idTurno, dataPrenotazione, numeroPersone, stato, noteCliente, caparraPagata)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(idCliente, data.idTurno, data.dataPrenotazione, data.numeroPersone, 'Confermata', data.noteCliente || null, data.caparraPagata ? 1 : 0);
+      `).run(idCliente, data.idTurno, data.dataPrenotazione, data.numeroPersone, 'Confermata', data.noteCliente || null, caparraEffettiva);
 
       const idPrenotazione = res.lastInsertRowid;
 
@@ -164,7 +173,7 @@ export async function getMyReservations() {
   try {
     return db.prepare(`
       SELECT P.*, R.idRistorante, R.nome as ristoranteNome, R.indirizzo as ristoranteIndirizzo, 
-             R.politicaNoShow, R.caparraRichiesta,
+             R.penaleNoShow, R.messaggioPenale, R.caparraRichiesta,
              GROUP_CONCAT(T.numero ORDER BY T.numero ASC) as numeroTavolo,
              O.oraInizio
       FROM Prenotazione P

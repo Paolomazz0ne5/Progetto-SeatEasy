@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Plus, X, Store, MapPin, Phone, Mail, ChevronRight, KeyRound,
-  FileText, Banknote, Loader2, AlertCircle, Pencil, Image as ImageIcon, Trash2
+  FileText, Banknote, Loader2, AlertCircle, Pencil, Image as ImageIcon, Trash2,
+  ShieldAlert, AlertTriangle
 } from 'lucide-react';
 import { addRistorante, updateRistorante, Ristorante } from '@/app/actions/ristoranti';
-import { verifyPinAction, checkHasPinAction } from '@/app/actions/auth';
+import { verifyRestaurantPinAction } from '@/app/actions/auth';
 
 // ─── Shared form fields ───────────────────────────────────────────────────────
 function RistoranteFormFields({ defaults }: { defaults?: Partial<Ristorante> }) {
@@ -133,20 +134,43 @@ function RistoranteFormFields({ defaults }: { defaults?: Partial<Ristorante> }) 
         </div>
       </div>
 
-      {/* Politica No-Show */}
-      <div className="space-y-1.5">
-        <label className="block text-xs font-bold text-gray-700 ml-1">Politica No-Show</label>
-        <div className="relative">
-          <div className="absolute top-3 left-0 pl-3.5 flex items-start pointer-events-none text-gray-400">
-            <FileText size={15} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
+        {/* Penale No-Show */}
+        <div className="space-y-1.5">
+          <label className="block text-xs font-bold text-gray-700 ml-1">Penale No-Show (€)</label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+              <ShieldAlert size={15} />
+            </div>
+            <input
+              type="number"
+              name="penaleNoShow"
+              step="0.01"
+              defaultValue={defaults?.penaleNoShow ?? 0}
+              placeholder="0.00"
+              className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-[#D35400] transition-shadow text-gray-900 text-sm"
+            />
           </div>
-          <textarea
-            name="politicaNoShow"
-            rows={3}
-            defaultValue={defaults?.politicaNoShow ?? ''}
-            placeholder="Es: In caso di mancata presentazione senza disdetta entro 24h, verrà addebitata la caparra."
-            className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-[#D35400] transition-shadow text-gray-900 text-sm resize-none"
-          />
+        </div>
+
+        {/* PIN di Sicurezza */}
+        <div className="space-y-1.5">
+          <label className="block text-xs font-bold text-[#781D2D] ml-1">PIN di Sicurezza Ristorante</label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#781D2D]/60">
+              <KeyRound size={15} />
+            </div>
+            <input
+              name="pin"
+              type="text"
+              pattern="[0-9]*"
+              inputMode="numeric"
+              maxLength={6}
+              defaultValue={defaults?.pin ?? ''}
+              placeholder="Es: 1234 (Opzionale)"
+              className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-[#781D2D] transition-shadow text-gray-900 text-sm font-mono tracking-widest"
+            />
+          </div>
         </div>
       </div>
 
@@ -165,6 +189,22 @@ function RistoranteFormFields({ defaults }: { defaults?: Partial<Ristorante> }) 
             defaultValue={defaults?.caparraRichiesta ?? ''}
             placeholder="0.00"
             className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-[#D35400] transition-shadow text-gray-900 text-sm"
+          />
+        </div>
+      </div>
+      {/* Messaggio Penale */}
+      <div className="space-y-1.5">
+        <label className="block text-xs font-bold text-gray-700 ml-1">Note Penale No-Show</label>
+        <div className="relative">
+          <div className="absolute top-3 left-0 pl-3.5 flex items-start pointer-events-none text-gray-400">
+            <AlertTriangle size={15} />
+          </div>
+          <textarea
+            name="messaggioPenale"
+            rows={2}
+            defaultValue={defaults?.messaggioPenale ?? ''}
+            placeholder="Es: La penale viene applicata solo per prenotazioni nel weekend."
+            className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-[#D35400] transition-shadow text-gray-900 text-sm resize-none"
           />
         </div>
       </div>
@@ -349,10 +389,12 @@ function EditRistoranteModal({
 
 // ─── Pin Prompt Modal ──────────────────────────────────────────────────────────
 function PinPromptModal({
+  idRistorante,
   onClose,
   onSuccess,
   error: initialError,
 }: {
+  idRistorante: number;
   onClose: () => void;
   onSuccess: () => void;
   error?: string | null;
@@ -370,7 +412,7 @@ function PinPromptModal({
 
     setError(null);
     startTransition(async () => {
-      const result = await verifyPinAction(pin);
+      const result = await verifyRestaurantPinAction(idRistorante, pin);
       if (result.success) {
         onSuccess();
       } else {
@@ -515,7 +557,8 @@ function RistoranteCard({
 export default function RistorantiClient({ initialData }: { initialData: Ristorante[] }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingRistorante, setEditingRistorante] = useState<Ristorante | null>(null);
-  const [pinPromptRistoranteId, setPinPromptRistoranteId] = useState<number | null>(null);
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{ type: 'edit' | 'enter' | 'add', ristorante: Ristorante | null } | null>(null);
   const [isCheckingPin, setIsCheckingPin] = useState(false);
   const router = useRouter();
 
@@ -526,31 +569,44 @@ export default function RistorantiClient({ initialData }: { initialData: Ristora
   }
 
   async function handleEnterRequest(idRistorante: number) {
-    setIsCheckingPin(true);
-    try {
-      const { hasPin } = await checkHasPinAction();
-      if (!hasPin) {
-        // Se non ha il PIN, entra direttamente
-        router.push(`/gestore/dashboard?ristorante=${idRistorante}`);
-      } else {
-        // Altrimenti chiedi il PIN
-        setPinPromptRistoranteId(idRistorante);
-      }
-    } catch (error) {
-      console.error('Error checking PIN status:', error);
-      // In caso di errore, per sicurezza magari chiediamo comunque o reindirizziamo?
-      // Meglio reindirizzare se non siamo sicuri o mostrare errore.
+    const targetRes = initialData.find(r => r.idRistorante === idRistorante);
+    if (!targetRes) return;
+
+    if (!targetRes.pin) {
       router.push(`/gestore/dashboard?ristorante=${idRistorante}`);
-    } finally {
-      setIsCheckingPin(false);
+    } else {
+      setPendingAction({ type: 'enter', ristorante: targetRes });
+      setIsPinModalOpen(true);
     }
   }
 
-  function handlePinSuccess() {
-    if (pinPromptRistoranteId) {
-      router.push(`/gestore/dashboard?ristorante=${pinPromptRistoranteId}`);
-      setPinPromptRistoranteId(null);
+  async function handleEditRequest(ristorante: Ristorante) {
+    if (!ristorante.pin) {
+      setEditingRistorante(ristorante);
+    } else {
+      setPendingAction({ type: 'edit', ristorante });
+      setIsPinModalOpen(true);
     }
+  }
+
+  async function handleAddRequest() {
+    // Per aggiungere un nuovo ristorante non serve PIN (di solito)
+    setShowAddModal(true);
+  }
+
+  function handlePinSuccess() {
+    if (!pendingAction) return;
+
+    if (pendingAction.type === 'enter' && pendingAction.ristorante) {
+      router.push(`/gestore/dashboard?ristorante=${pendingAction.ristorante.idRistorante}`);
+    } else if (pendingAction.type === 'edit' && pendingAction.ristorante) {
+      setEditingRistorante(pendingAction.ristorante);
+    } else if (pendingAction.type === 'add') {
+      setShowAddModal(true);
+    }
+    
+    setIsPinModalOpen(false);
+    setPendingAction(null);
   }
 
   return (
@@ -566,7 +622,7 @@ export default function RistorantiClient({ initialData }: { initialData: Ristora
           </p>
         </div>
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={handleAddRequest}
           className="inline-flex items-center gap-2 px-6 py-3.5 bg-gradient-to-r from-[#D35400] to-[#781D2D] text-white text-sm font-bold rounded-xl shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 whitespace-nowrap self-start sm:self-auto"
         >
           <Plus size={18} />
@@ -598,7 +654,7 @@ export default function RistorantiClient({ initialData }: { initialData: Ristora
             <RistoranteCard
               key={r.idRistorante}
               ristorante={r}
-              onEdit={setEditingRistorante}
+              onEdit={handleEditRequest}
               onEnter={handleEnterRequest}
             />
           ))}
@@ -622,9 +678,13 @@ export default function RistorantiClient({ initialData }: { initialData: Ristora
         />
       )}
       {/* PIN Prompt modal */}
-      {pinPromptRistoranteId && (
+      {isPinModalOpen && pendingAction?.ristorante && (
         <PinPromptModal
-          onClose={() => setPinPromptRistoranteId(null)}
+          idRistorante={pendingAction.ristorante.idRistorante}
+          onClose={() => {
+            setIsPinModalOpen(false);
+            setPendingAction(null);
+          }}
           onSuccess={handlePinSuccess}
         />
       )}

@@ -41,7 +41,7 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
 
   // Recupera i turni per il ristorante
   const turni = db.prepare(`
-    SELECT T.idTurno, T.nomeTurno, O.oraInizio, O.oraFine
+    SELECT T.idTurno, O.nome AS nomeTurno, O.oraInizio, O.oraFine
     FROM Turno T
     JOIN Orario O ON T.idOrario = O.idOrario
     WHERE O.idRistorante = ?
@@ -133,7 +133,9 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
                   <h3 className="font-bold text-[#781D2D] text-lg">Penale e Annullamento</h3>
                 </div>
                 <p className="text-[#781D2D]/80 leading-relaxed font-medium">
-                  {ristorante.politicaNoShow || 'Nessuna politica specifica fornita. Contatta il ristorante per i dettagli sulle mancate presentazioni.'}
+                  {ristorante.penaleNoShow && ristorante.penaleNoShow > 0
+                    ? `In caso di mancata presentazione, è prevista una penale di €${Number(ristorante.penaleNoShow).toFixed(2)}. ${ristorante.messaggioPenale || ''}`
+                    : ristorante.messaggioPenale || 'Nessuna penale specifica prevista per questa struttura.'}
                 </p>
               </div>
             </div>

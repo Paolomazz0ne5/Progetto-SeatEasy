@@ -162,3 +162,33 @@ export async function checkHasPinAction() {
   }
 }
 
+export async function verifyRestaurantPinAction(idRistorante: number, pin: string) {
+  const cookieStore = await cookies();
+  const session = cookieStore.get('seateasy_session');
+  if (!session) return { success: false, error: 'Sessione non valida' };
+
+  const idAccount = parseInt(session.value);
+  const db = getDb();
+  try {
+    const ristorante = db.prepare('SELECT pin FROM Ristorante WHERE idRistorante = ? AND idGestoreRistorante = ?').get(idRistorante, idAccount) as { pin: string | null } | undefined;
+    
+    if (!ristorante) return { success: false, error: 'Ristorante non trovato' };
+    
+    // Se non ha impostato un PIN per il ristorante, la verifica passa (o gestiamo a monte)
+    if (ristorante.pin === null || ristorante.pin === '') {
+      return { success: true };
+    }
+
+    if (ristorante.pin === pin) {
+      return { success: true };
+    } else {
+      return { success: false, error: 'PIN non corretto' };
+    }
+  } catch (error) {
+    console.error('Error verifying Restaurant PIN:', error);
+    return { success: false, error: 'Errore durante la verifica del PIN' };
+  } finally {
+    db.close();
+  }
+}
+
