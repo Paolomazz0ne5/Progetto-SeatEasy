@@ -65,6 +65,8 @@ export default function TableMap({
   const [specialRequests, setSpecialRequests] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [turnoError, setTurnoError] = useState<string | null>(null);
+  const [tavoliError, setTavoliError] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
@@ -109,6 +111,7 @@ export default function TableMap({
   };
 
   const handleTableClick = (tavolo: Tavolo) => {
+    setTavoliError(null);
     if (tavolo.stato !== 'Libero') return;
 
     // Controlla se il tavolo (o il suo gruppo) può ospitare il numero di persone (pax)
@@ -172,18 +175,32 @@ export default function TableMap({
   };
 
   const handleBooking = async () => {
+    setTurnoError(null);
+    setTavoliError(null);
+    setMessage(null);
+
+    let hasError = false;
+
     if (!selectedTurno || !selectedTime) {
-      setMessage({ type: 'error', text: 'Seleziona un turno e un orario.' });
-      return;
+      setTurnoError('Devi selezionare un turno e un orario per procedere.');
+      document.getElementById('selettore-turno')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      hasError = true;
     }
-    if (selectedTavoli.length === 0) {
-      setMessage({ type: 'error', text: 'Seleziona almeno un tavolo sulla mappa.' });
-      return;
+    
+    if (!hasError && selectedTavoli.length === 0) {
+      setTavoliError('Seleziona almeno un tavolo sulla mappa.');
+      document.getElementById('mappa-tavoli')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      hasError = true;
     }
-    if (pax && totalPostiSelezione < pax) {
-      setMessage({ type: 'error', text: `Servono almeno ${pax} posti. Attualmente selezionati: ${totalPostiSelezione}.` });
-      return;
+    
+    if (!hasError && pax && totalPostiSelezione < pax) {
+      setTavoliError(`Servono almeno ${pax} posti. Attualmente selezionati: ${totalPostiSelezione}.`);
+      document.getElementById('mappa-tavoli')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      hasError = true;
     }
+
+    if (hasError) return;
+
     if (caparraRichiesta > 0 && !paymentCompleted) {
       setShowPaymentModal(true);
       return;
@@ -365,8 +382,13 @@ export default function TableMap({
         </div>
 
         {/* Selettore del turno (Sezione Interattiva) */}
-        <div className="bg-[#FDF1E9]/30 p-6 rounded-[2rem] border border-[#F5CBA7]/20">
+        <div id="selettore-turno" className="bg-[#FDF1E9]/30 p-6 rounded-[2rem] border border-[#F5CBA7]/20">
           <div className="space-y-6">
+            {turnoError && (
+              <div className="bg-red-100 text-red-600 p-4 rounded-xl font-black text-center text-sm border-2 border-red-200 shadow-sm animate-in slide-in-from-top-2 duration-300">
+                {turnoError}
+              </div>
+            )}
             <div>
               <label className="block text-[10px] font-black text-[#781D2D] uppercase tracking-widest mb-3 ml-1">Fascia Oraria</label>
               <div className="flex flex-wrap gap-2">
@@ -379,7 +401,7 @@ export default function TableMap({
                     <button
                       key={t.idTurno}
                       type="button"
-                      onClick={() => { setSelectedTurno(t.idTurno); setSelectedTime(''); setSelectedTavoli([]); }}
+                      onClick={() => { setTurnoError(null); setSelectedTurno(t.idTurno); setSelectedTime(''); setSelectedTavoli([]); }}
                       className={`px-6 py-3 rounded-xl text-sm font-bold transition-all border-2 ${selectedTurno === t.idTurno
                         ? 'bg-[#781D2D] border-[#781D2D] text-white shadow-md'
                         : 'bg-white border-[#F5CBA7]/30 text-[#781D2D] hover:border-[#F5CBA7]'}`}
@@ -402,7 +424,7 @@ export default function TableMap({
                     <button
                       key={slot}
                       type="button"
-                      onClick={() => { setSelectedTime(slot); setSelectedTavoli([]); }}
+                      onClick={() => { setTurnoError(null); setSelectedTime(slot); setSelectedTavoli([]); }}
                       className={`py-2 rounded-lg text-xs font-bold transition-all border ${selectedTime === slot
                         ? 'bg-[#D35400] border-[#D35400] text-white shadow-sm'
                         : 'bg-white border-[#F5CBA7]/30 text-[#781D2D] hover:border-[#D35400]'}`}
@@ -418,7 +440,12 @@ export default function TableMap({
       </div>
 
       {/* ── Table Map ── */}
-      <div className={`bg-[#FFFDFB] border-2 border-dashed border-[#F5CBA7] rounded-2xl p-6 md:p-10 mb-6 transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+      <div id="mappa-tavoli" className={`bg-[#FFFDFB] border-2 border-dashed border-[#F5CBA7] rounded-2xl p-6 md:p-10 mb-6 transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+        {tavoliError && (
+          <div className="mb-6 bg-red-100 text-red-600 p-4 rounded-xl font-black text-center text-sm border-2 border-red-200 shadow-sm animate-in slide-in-from-top-2 duration-300">
+            {tavoliError}
+          </div>
+        )}
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <div className="w-8 h-8 border-4 border-[#F5CBA7] border-t-[#D35400] rounded-full animate-spin"></div>
@@ -575,10 +602,10 @@ export default function TableMap({
 
         <button
           onClick={handleBooking}
-          disabled={!canBook || loading}
+          disabled={loading}
           className={`w-full py-5 rounded-[2rem] font-black text-xl shadow-xl transition-all transform active:scale-95 ${canBook && !loading
             ? 'bg-gradient-to-r from-[#D35400] via-[#E74C3C] to-[#781D2D] text-white hover:shadow-2xl hover:-translate-y-1'
-            : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+            : 'bg-gray-100 text-gray-400'}`}
         >
           {loading ? (
             <span className="flex items-center justify-center gap-3">
