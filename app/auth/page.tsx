@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Lock, Mail, User, Phone, KeyRound } from 'lucide-react';
+import { Lock, Mail, User, Phone } from 'lucide-react';
 import Logo from '@/components/Logo';
 import { loginAction, registerAction } from '@/app/actions/auth';
 
@@ -209,30 +209,6 @@ export default function UnifiedAuthPage() {
             </div>
           </div>
 
-          {/* Campo Condizionale: PIN Sicurezza per Gestore (Solo in Registrazione) */}
-          {mode === 'register' && role === 'gestore' && (
-            <div className="space-y-1.5 bg-red-50/50 p-3 rounded-xl border border-red-100 mt-2 animate-in fade-in slide-in-from-top-2">
-              <label className="block text-xs font-bold text-[#781D2D] ml-1">
-                PIN di Sicurezza Ristorante
-              </label>
-              <p className="text-xs text-gray-500 mb-2 ml-1">Codice a 4-6 cifre richiesto per creare il tuo profilo gestore.</p>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#781D2D]/60">
-                   <KeyRound size={16} />
-                </div>
-                <input 
-                   name="pin" 
-                   type="text" 
-                   pattern="[0-9]*"
-                   inputMode="numeric"
-                   required={false}
-                   maxLength={6}
-                   placeholder="Es: 1234 (Opzionale)"
-                   className="w-full bg-white border-2 border-gray-900 rounded-xl py-2.5 pl-10 pr-3 focus:outline-none focus:ring-2 focus:ring-gray-900 transition-shadow text-gray-900 text-sm font-mono tracking-widest"
-                />
-              </div>
-            </div>
-          )}
 
           <button 
              type="submit" 

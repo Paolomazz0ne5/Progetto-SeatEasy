@@ -1,38 +1,46 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 
+// 1. PATH DINAMICO: Usare process.cwd() garantisce che il db venga trovato a prescindere da dove viene lanciato lo script
 const dbPath = path.resolve(process.cwd(), 'database.db');
 const db = new Database(dbPath, { verbose: console.log });
 
 console.log('Inizializzazione del database in corso...');
 
 db.exec(`
+  -- i vincoli di chiave esterna (Foreign Keys) sono disabilitati di default per retrocompatibilità. 
+  -- Questa istruzione li forza ad essere attivi, garantendo l'integrità referenziale del nostro schema.
   PRAGMA foreign_keys = ON;
 
-  -- 1. ACCOUNT E UTENTI
+  -- ==========================================
+  -- 1. ACCOUNT E UTENTI (Pattern Generalizzazione)
+  -- ==========================================
   CREATE TABLE IF NOT EXISTS Account (
       idAccount INTEGER PRIMARY KEY AUTOINCREMENT,
       email TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
+      password TEXT NOT NULL, -- Nota esame: qui salveremo l'hash (es. bcrypt), MAI in chiaro.
       nome TEXT NOT NULL,
       cognome TEXT NOT NULL,
       telefono TEXT,
       dataCreazione TEXT DEFAULT CURRENT_TIMESTAMP
   );
 
+  -- MAPPATURA SOTTOCLASSE: GestoreRistorante
   CREATE TABLE IF NOT EXISTS GestoreRistorante (
-      idAccount INTEGER PRIMARY KEY,
-      pin TEXT,
+      idAccount INTEGER PRIMARY KEY, -- Funge SIA da Primary Key che da Foreign Key
       FOREIGN KEY (idAccount) REFERENCES Account(idAccount) ON DELETE CASCADE
   );
 
+  -- MAPPATURA SOTTOCLASSE: Cliente
   CREATE TABLE IF NOT EXISTS Cliente (
       idAccount INTEGER PRIMARY KEY,
       metodoPagamentoPredefinito TEXT,
       FOREIGN KEY (idAccount) REFERENCES Account(idAccount) ON DELETE CASCADE
   );
 
+  -- ==========================================
   -- 2. STRUTTURA RISTORANTE
+  -- ==========================================
   CREATE TABLE IF NOT EXISTS Ristorante (
       idRistorante INTEGER PRIMARY KEY AUTOINCREMENT,
       idGestoreRistorante INTEGER NOT NULL,
@@ -46,6 +54,9 @@ db.exec(`
       caparraRichiesta REAL,
       tipologia TEXT,
       foto_url TEXT,
+      --  ON DELETE RESTRICT
+      -- Se un gestore viene cancellato, NON possiamo cancellare a cascata il ristorante,
+      -- altrimenti perderemmo lo storico fiscale. L'operazione di delete viene bloccata.
       FOREIGN KEY (idGestoreRistorante) REFERENCES GestoreRistorante(idAccount) ON DELETE RESTRICT
   );
 
@@ -67,7 +78,9 @@ db.exec(`
       FOREIGN KEY (idSala) REFERENCES Sala(idSala) ON DELETE CASCADE
   );
 
+  -- ==========================================
   -- 3. ORARI E TURNI
+  -- ==========================================
   CREATE TABLE IF NOT EXISTS Orario (
       idOrario INTEGER PRIMARY KEY AUTOINCREMENT,
       idRistorante INTEGER NOT NULL,
@@ -83,7 +96,9 @@ db.exec(`
       FOREIGN KEY (idOrario) REFERENCES Orario(idOrario) ON DELETE CASCADE
   );
 
+  -- ==========================================
   -- 4. PRENOTAZIONI E OPERAZIONI
+  -- ==========================================
   CREATE TABLE IF NOT EXISTS Prenotazione (
       idPrenotazione INTEGER PRIMARY KEY AUTOINCREMENT,
       idCliente INTEGER NOT NULL,
@@ -94,14 +109,17 @@ db.exec(`
       noteCliente TEXT,
       caparraPagata REAL DEFAULT 0,
       dataCreazione TEXT DEFAULT CURRENT_TIMESTAMP,
+      -- VINCOLI FISCALI/STORICI: RESTRICT
+      -- Non si possono cancellare clienti o turni se hanno prenotazioni associate!
       FOREIGN KEY (idCliente) REFERENCES Cliente(idAccount) ON DELETE RESTRICT,
       FOREIGN KEY (idTurno) REFERENCES Turno(idTurno) ON DELETE RESTRICT
   );
 
+  -- TABELLA PONTE (Relazione Molti-a-Molti)
   CREATE TABLE IF NOT EXISTS OccupazioneTavolo (
       idTavolo INTEGER NOT NULL,
       idPrenotazione INTEGER NOT NULL,
-      PRIMARY KEY (idTavolo, idPrenotazione),
+      PRIMARY KEY (idTavolo, idPrenotazione), -- Chiave primaria composta!
       FOREIGN KEY (idTavolo) REFERENCES Tavolo(idTavolo) ON DELETE CASCADE,
       FOREIGN KEY (idPrenotazione) REFERENCES Prenotazione(idPrenotazione) ON DELETE CASCADE
   );
@@ -126,6 +144,7 @@ db.exec(`
       statoInvio TEXT,
       FOREIGN KEY (idPrenotazione) REFERENCES Prenotazione(idPrenotazione) ON DELETE CASCADE
   );
+
   CREATE TABLE IF NOT EXISTS GalleriaRistorante (
     idImmagine INTEGER PRIMARY KEY AUTOINCREMENT,
     idRistorante INTEGER NOT NULL,
@@ -133,29 +152,31 @@ db.exec(`
     prezzo REAL,
     nota TEXT,
     FOREIGN KEY (idRistorante) REFERENCES Ristorante(idRistorante) ON DELETE CASCADE
-);
+  );
 `);
 
-// Inseriamo i dati di prova di base
+// ==========================================
+// 5. SEEDING (Popolamento Iniziale)
+// ==========================================
+// Controllo dell'idempotenza: si inseriscono i dati SOLO se il DB è vuoto.
 const count = db.prepare('SELECT COUNT(*) as count FROM Account').get();
+
 if (count.count === 0) {
-    // 1. Creo l'Admin
+    // Uso le query parametrizzate (?) per prevenire SQL Injection, anche nel seeding
     const insertAccount = db.prepare('INSERT INTO Account (email, password, nome, cognome) VALUES (?, ?, ?, ?)');
+    
+    // .run() restituisce un oggetto info con lastInsertRowid
     const resAdmin = insertAccount.run('admin@seateasy.it', 'hash_pass', 'Mario', 'Gestore');
+    db.prepare('INSERT INTO GestoreRistorante (idAccount) VALUES (?)').run(resAdmin.lastInsertRowid);
 
-    db.prepare('INSERT INTO GestoreRistorante (idAccount, pin) VALUES (?, ?)').run(resAdmin.lastInsertRowid, '1234');
+    const insertRisto = db.prepare('INSERT INTO Ristorante (idGestoreRistorante, nome, indirizzo, penaleNoShow, caparraRichiesta, tipologia) VALUES (?, ?, ?, ?, ?, ?)');
+    const resRisto = insertRisto.run(resAdmin.lastInsertRowid, 'La Trattoria di Mario', 'Via Roma 1, Milano', 15.00, 20.00, 'Italiano');
 
-    // 2. Creo il Ristorante
-    const insertRisto = db.prepare('INSERT INTO Ristorante (idGestoreRistorante, nome, indirizzo, politicaNoShow, caparraRichiesta, tipologia) VALUES (?, ?, ?, ?, ?, ?)');
-    const resRisto = insertRisto.run(resAdmin.lastInsertRowid, 'La Trattoria di Mario', 'Via Roma 1, Milano', 'Caparra trattenuta dopo 15 min di ritardo', 20.00, 'Italiano');
-
-    // 3. Creo una Sala e un Tavolo di prova per la Dashboard
     const insertSala = db.prepare('INSERT INTO Sala (idRistorante, nome, capacita, attiva) VALUES (?, ?, ?, ?)');
     const resSala = insertSala.run(resRisto.lastInsertRowid, 'Sala Principale', 50, 1);
 
     db.prepare('INSERT INTO Tavolo (idSala, numero, posti, stato) VALUES (?, ?, ?, ?)').run(resSala.lastInsertRowid, 1, 4, 'Libero');
 
-    // 4. Creo un Cliente finto
     const resCliente = insertAccount.run('cliente@email.it', 'hash_pass', 'Luigi', 'Bianchi');
     db.prepare('INSERT INTO Cliente (idAccount) VALUES (?)').run(resCliente.lastInsertRowid);
 

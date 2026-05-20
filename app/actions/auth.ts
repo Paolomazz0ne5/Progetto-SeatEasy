@@ -63,7 +63,6 @@ export async function registerAction(formData: FormData) {
   const password = formData.get('password') as string;
   const telefono = formData.get('telefono') as string;
   const role = formData.get('role') as string;
-  const pin = formData.get('pin') as string;
 
   if (!email || !password || !nome || !cognome) {
     return { success: false, error: 'Compila tutti i campi richiesti.' };
@@ -81,7 +80,7 @@ export async function registerAction(formData: FormData) {
       const newId = res.lastInsertRowid;
       
       if (role === 'gestore') {
-        db.prepare('INSERT INTO GestoreRistorante (idAccount, pin) VALUES (?, ?)').run(newId, pin || null);
+        db.prepare('INSERT INTO GestoreRistorante (idAccount) VALUES (?)').run(newId);
       } else {
         db.prepare('INSERT INTO Cliente (idAccount) VALUES (?)').run(newId);
       }
@@ -115,52 +114,6 @@ export async function logoutAction() {
   redirect('/auth');
 }
 
-export async function verifyPinAction(pin: string) {
-  const cookieStore = await cookies();
-  const session = cookieStore.get('seateasy_session');
-  if (!session) return { success: false, error: 'Sessione non valida' };
-
-  const idAccount = parseInt(session.value);
-  const db = getDb();
-  try {
-    const gestore = db.prepare('SELECT pin FROM GestoreRistorante WHERE idAccount = ?').get(idAccount) as { pin: string | null } | undefined;
-    
-    if (!gestore) return { success: false, error: 'Gestore non trovato' };
-    
-    // Se non ha impostato un PIN, consideriamo la verifica superata o gestiamo a monte
-    if (gestore.pin === null || gestore.pin === '') {
-      return { success: true };
-    }
-
-    if (gestore.pin === pin) {
-      return { success: true };
-    } else {
-      return { success: false, error: 'PIN non corretto' };
-    }
-  } catch (error) {
-    console.error('Error verifying PIN:', error);
-    return { success: false, error: 'Errore durante la verifica del PIN' };
-  } finally {
-    db.close();
-  }
-}
-
-export async function checkHasPinAction() {
-  const cookieStore = await cookies();
-  const session = cookieStore.get('seateasy_session');
-  if (!session) return { hasPin: false };
-
-  const idAccount = parseInt(session.value);
-  const db = getDb();
-  try {
-    const gestore = db.prepare('SELECT pin FROM GestoreRistorante WHERE idAccount = ?').get(idAccount) as { pin: string | null } | undefined;
-    return { hasPin: !!(gestore?.pin) };
-  } catch (error) {
-    return { hasPin: false };
-  } finally {
-    db.close();
-  }
-}
 
 export async function verifyRestaurantPinAction(idRistorante: number, pin: string) {
   const cookieStore = await cookies();
