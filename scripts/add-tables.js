@@ -1,4 +1,11 @@
+// Inizializzazione della connessione al database locale
 const db = require('better-sqlite3')('database.db');
+
+// [NOTA D'ESAME - GRAVE INEFFICIENZA]: 
+// Stai usando 9 istruzioni db.exec() separate. 
+// In SQLite, ogni istruzione singola eseguita in questo modo apre e chiude 
+// una transazione sul file system in automatico. Questo genera 9 accessi I/O 
+// al disco separati, il che è lentissimo e sconsigliato in produzione.
 db.exec("INSERT INTO Tavolo (idSala, numero, posti, stato) VALUES (1, 2, 2, 'Libero');");
 db.exec("INSERT INTO Tavolo (idSala, numero, posti, stato) VALUES (1, 3, 2, 'Occupato');");
 db.exec("INSERT INTO Tavolo (idSala, numero, posti, stato) VALUES (1, 4, 6, 'Libero');");
@@ -8,4 +15,5 @@ db.exec("INSERT INTO Tavolo (idSala, numero, posti, stato) VALUES (1, 7, 2, 'Non
 db.exec("INSERT INTO Tavolo (idSala, numero, posti, stato) VALUES (1, 8, 4, 'Libero');");
 db.exec("INSERT INTO Tavolo (idSala, numero, posti, stato) VALUES (1, 9, 2, 'Libero');");
 db.exec("INSERT INTO Tavolo (idSala, numero, posti, stato) VALUES (1, 10, 4, 'Libero');");
+
 console.log('Tavoli aggiunti.');
