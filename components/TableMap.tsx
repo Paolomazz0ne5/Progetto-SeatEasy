@@ -1,11 +1,11 @@
 "use client";
-
+//import di librerie React e Next.js
 import React, { useState, useEffect } from 'react';
 import { getAvailableTables, createReservation } from '@/app/actions/cliente';
 import { useRouter } from 'next/navigation';
 
 // 1. DEFINIZIONE DEI CONTRATTI (TYPES)
-// Spiegazione per l'esame: Usiamo "type" invece di "interface" per mappare esattamente 
+//Usiamo "type" invece di "interface" per mappare esattamente 
 // la struttura dei dati restituita da SQLite. Questo previene errori a runtime.
 type Tavolo = {
   idTavolo: number;
@@ -28,16 +28,16 @@ type Turno = {
 // un array di stringhe spaziate di 15 minuti. Lo fa convertendo le ore in minuti totali.
 function generateTimeSlots(start: string, end: string) {
   if (!start || !end) return [];
-  const [h1, m1] = start.split(':').map(Number);
-  const [h2, m2] = end.split(':').map(Number);
+  const [h1, m1] = start.split(':').map(Number); //serve per estrarre ore e minuti
+  const [h2, m2] = end.split(':').map(Number); //serve per estrarre ore e minuti
 
-  let currentMinutes = h1 * 60 + m1;
-  const endMinutes = h2 * 60 + m2;
+  let currentMinutes = h1 * 60 + m1; //conversione dell'ora di inizio in minuti
+  const endMinutes = h2 * 60 + m2;  //conversione dell'ora di fine in minuti
 
   const slots = [];
   while (currentMinutes <= endMinutes) {
-    const h = Math.floor(currentMinutes / 60);
-    const m = currentMinutes % 60;
+    const h = Math.floor(currentMinutes / 60);  //conversione dei minuti in ore
+    const m = currentMinutes % 60;  //conversione delle ore in minuti
     // .padStart(2, '0') assicura che il formato sia sempre "HH:MM" (es. "09:05" e non "9:5")
     slots.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
     currentMinutes += 15;
@@ -45,12 +45,12 @@ function generateTimeSlots(start: string, end: string) {
   return slots;
 }
 
-export default function TableMap({
-  initialTavoli,
-  idRistorante,
-  turni,
-  pax,
-  initialDate,
+export default function TableMap({ //è un componente react che renderizza la mappa dei tavoli
+  initialTavoli, // array di tavoli
+  idRistorante, // id del ristorante
+  turni, // array di turni
+  pax, // numero di persone
+  initialDate, // data
   caparraRichiesta = 0,
   metodoPagamentoPredefinito,
 }: {
@@ -393,7 +393,9 @@ export default function TableMap({
                       type="button"
                       // Al click sull'ora, la imposta nello stato. Questo innesca lo useEffect che interroga il DB!
                       onClick={() => { setTurnoError(null); setSelectedTime(slot); setSelectedTavoli([]); }}
-                      className={`... `}
+                      className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border-2 ${selectedTime === slot
+                        ? 'bg-[#781D2D] border-[#781D2D] text-white shadow-md'
+                        : 'bg-white border-[#F5CBA7]/30 text-[#781D2D] hover:border-[#F5CBA7]'}`}
                     >
                       {slot}
                     </button>
@@ -504,7 +506,7 @@ export default function TableMap({
           <textarea
             value={specialRequests}
             onChange={(e) => setSpecialRequests(e.target.value)} // Salva il testo nello stato di React
-            className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3..."
+            className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 min-h-[100px]"
           />
         </div>
 
@@ -521,7 +523,7 @@ export default function TableMap({
             ? `Procedi al Pagamento (€${caparraRichiesta.toFixed(2)})`
             : 'Conferma Prenotazione'}
         </button>
-
+        {/*//verifica che l'importo della caparra sia maggiore di 0 e che il pagamento sia stato completato*/}
         {paymentCompleted && caparraRichiesta > 0 && (
           <p className="text-center mt-3 text-green-600 font-bold text-sm flex items-center justify-center gap-2">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
