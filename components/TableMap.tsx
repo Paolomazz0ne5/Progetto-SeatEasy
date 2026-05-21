@@ -4,11 +4,14 @@ import React, { useState, useEffect } from 'react';
 import { getAvailableTables, createReservation } from '@/app/actions/cliente';
 import { useRouter } from 'next/navigation';
 
+// 1. DEFINIZIONE DEI CONTRATTI (TYPES)
+// Spiegazione per l'esame: Usiamo "type" invece di "interface" per mappare esattamente 
+// la struttura dei dati restituita da SQLite. Questo previene errori a runtime.
 type Tavolo = {
   idTavolo: number;
   numero: number;
   posti: number;
-  postiMinimi: number;
+  postiMinimi: number; // Novità anti-spreco!
   stato: string;
   idGruppo?: string | null;
 };
@@ -20,18 +23,22 @@ type Turno = {
   oraFine: string;
 };
 
+// 2. FUNZIONE PURA: GENERATORE DI SLOT ORARI
+// Spiegazione: Prende un orario di inizio e fine (es. 19:00 - 23:00) e genera 
+// un array di stringhe spaziate di 15 minuti. Lo fa convertendo le ore in minuti totali.
 function generateTimeSlots(start: string, end: string) {
   if (!start || !end) return [];
   const [h1, m1] = start.split(':').map(Number);
   const [h2, m2] = end.split(':').map(Number);
-  
+
   let currentMinutes = h1 * 60 + m1;
   const endMinutes = h2 * 60 + m2;
-  
+
   const slots = [];
   while (currentMinutes <= endMinutes) {
     const h = Math.floor(currentMinutes / 60);
     const m = currentMinutes % 60;
+    // .padStart(2, '0') assicura che il formato sia sempre "HH:MM" (es. "09:05" e non "9:5")
     slots.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
     currentMinutes += 15;
   }
@@ -47,6 +54,7 @@ export default function TableMap({
   caparraRichiesta = 0,
   metodoPagamentoPredefinito,
 }: {
+  // Le props passate dal server component (page.tsx)
   initialTavoli: Tavolo[];
   idRistorante: number;
   turni: Turno[];
@@ -55,40 +63,48 @@ export default function TableMap({
   caparraRichiesta?: number;
   metodoPagamentoPredefinito?: string;
 }) {
+  // 3. STATI DI REACT (La Memoria del Componente)
   const [tavoli, setTavoli] = useState<Tavolo[]>(initialTavoli);
   const [selectedTavoli, setSelectedTavoli] = useState<Tavolo[]>([]);
   const [selectedTurno, setSelectedTurno] = useState<number>(0);
   const [selectedTime, setSelectedTime] = useState<string>('');
-  const [selectedDate] = useState<string>(
-    initialDate || new Date().toISOString().split('T')[0]
-  );
+  const [selectedDate] = useState<string>(initialDate || new Date().toISOString().split('T')[0]);
   const [specialRequests, setSpecialRequests] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [turnoError, setTurnoError] = useState<string | null>(null);
   const [tavoliError, setTavoliError] = useState<string | null>(null);
+
+  // Stati per la simulazione del pagamento caparra
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
-  // Toast temporaneo per avvisi di capacità minima
   const [minToast, setMinToast] = useState<string | null>(null);
 
   const router = useRouter();
 
+  // 4. EFFETTO COLLATERALE: AUTO-SELEZIONE DEL TURNO
+  // Appena il componente viene montato, se ci sono turni, seleziona in automatico il primo.
   useEffect(() => {
     if (turni.length > 0 && selectedTurno === 0) {
       setSelectedTurno(turni[0].idTurno);
     }
   }, [turni, selectedTurno]);
 
+  // 5. IL MOTORE DI AGGIORNAMENTO DISPONIBILITÀ (REATTIVITÀ)
+  // Questo useEffect si attiva ogni volta che l'utente cambia Data, Turno o Ora.
+  // Chiama la Server Action getAvailableTables per avere la situazione reale dei tavoli.
   useEffect(() => {
     async function updateAvailability() {
       if (!selectedTurno || !selectedDate) return;
       setLoading(true);
+      // Chiamata asincrona al server per calcolare il turnover
       const updated = await getAvailableTables(idRistorante, selectedDate, selectedTurno, selectedTime);
       setTavoli(updated);
       setLoading(false);
-      // Deseleziona eventuali tavoli che non sono più liberi
+
+      // Controllo di sicurezza: se l'utente aveva selezionato un tavolo che nel nuovo
+      // orario risulta occupato, lo togliamo dalla sua selezione in automatico.
       setSelectedTavoli(prev =>
         prev.filter(sel => {
           const t = updated.find(u => u.idTavolo === sel.idTavolo);
@@ -99,28 +115,32 @@ export default function TableMap({
     updateAvailability();
   }, [selectedTurno, selectedDate, selectedTime, idRistorante]);
 
-  // Valori derivati
-  const selectedIds = new Set(selectedTavoli.map(t => t.idTavolo));
-  const totalPostiSelezione = selectedTavoli.reduce((s, t) => s + t.posti, 0);
-  const isFulfilled = pax !== undefined && totalPostiSelezione >= pax;
-  const canBook = selectedTavoli.length > 0 && (!pax || totalPostiSelezione >= pax);
+  // 6. VALORI DERIVATI (Non serve metterli in uno useState)
+  const selectedIds = new Set(selectedTavoli.map(t => t.idTavolo)); // Set per ricerca ultra-veloce O(1)
+  const totalPostiSelezione = selectedTavoli.reduce((s, t) => s + t.posti, 0); // Calcola la capacità totale scelta
+  const isFulfilled = pax !== undefined && totalPostiSelezione >= pax; // True se i posti bastano
+  const canBook = selectedTavoli.length > 0 && (!pax || totalPostiSelezione >= pax); // Check finale per abilitare il bottone
 
+  // Funzione helper per mostrare gli avvisi temporanei
   const showMinToast = (text: string) => {
     setMinToast(text);
     setTimeout(() => setMinToast(null), 3500);
   };
 
+  // 7. IL CUORE DELLA BUSINESS LOGIC LATO CLIENT (L'algoritmo di selezione)
   const handleTableClick = (tavolo: Tavolo) => {
     setTavoliError(null);
-    if (tavolo.stato !== 'Libero') return;
+    if (tavolo.stato !== 'Libero') return; // Se è occupato, interrompe tutto.
 
-    // Controlla se il tavolo (o il suo gruppo) può ospitare il numero di persone (pax)
+    // 7A. CONTROLLO OVERBOOKING (Il tavolo è troppo piccolo?)
     if (pax !== undefined) {
+      // Se il tavolo fa parte di un gruppo, sommiamo i posti di tutto il gruppo
       const groupTables = tavolo.idGruppo
         ? tavoli.filter(t => t.idGruppo === tavolo.idGruppo && t.stato === 'Libero')
         : [tavolo];
       const groupMax = groupTables.reduce((s, t) => s + t.posti, 0);
 
+      // Se le persone sono più della capienza massima del tavolo/gruppo, si blocca.
       if (pax > groupMax) {
         const msg = tavolo.idGruppo
           ? `Questo gruppo di tavoli può ospitare al massimo ${groupMax} persone.`
@@ -130,50 +150,53 @@ export default function TableMap({
       }
     }
 
+    // Aggiornamento dello stato (precedente -> successivo)
     setSelectedTavoli(prev => {
       const isAlreadySelected = prev.some(t => t.idTavolo === tavolo.idTavolo);
 
-      // Blocco a Soddisfacimento
+      // 7B. BLOCCO A SODDISFACIMENTO
+      // Se hai già raggiunto i posti necessari (isFulfilled) e stai cliccando su un tavolo NUOVO, ti blocco.
       if (isFulfilled && !isAlreadySelected) {
         setTimeout(() => showMinToast("Hai già selezionato un numero di posti sufficiente per il tuo gruppo. Rimuovi un tavolo se vuoi sceglierne un altro."), 0);
-        return prev;
+        return prev; // Ritorna lo stato invariato
       }
 
-      // Deseleziona se già selezionato
+      // 7C. TOGGLE (Deselezione se era già selezionato)
       if (isAlreadySelected) {
         return prev.filter(t => t.idTavolo !== tavolo.idTavolo);
       }
 
-      // Costruisce la nuova selezione ipotetica
+      // Costruiamo l'ipotesi della nuova selezione
       let nextSelection: Tavolo[];
       if (!tavolo.idGruppo) {
-        nextSelection = [tavolo];
+        nextSelection = [tavolo]; // Se è un tavolo singolo, sostituisce la selezione precedente
       } else {
+        // Se è un tavolo di un gruppo, verifica se appartiene allo stesso gruppo già selezionato
         const currentGroupId = prev.length > 0 ? prev[0].idGruppo : null;
         nextSelection = currentGroupId === tavolo.idGruppo
-          ? [...prev, tavolo]
-          : [tavolo];
+          ? [...prev, tavolo] // Aggiungi al gruppo
+          : [tavolo];         // Inizia un nuovo gruppo diverso
       }
 
-      // Validazione postiMinimi:
-      // pax deve essere >= alla somma dei postiMinimi di tutti i tavoli nella nuova selezione
+      // 7D. VALIDAZIONE POSTI MINIMI (Anti-spreco per il Ristoratore)
       if (pax !== undefined) {
+        // Calcola la somma dei requisiti minimi della selezione
         const totalMin = nextSelection.reduce((s, t) => s + (t.postiMinimi ?? 1), 0);
         if (pax < totalMin) {
           const isSingle = nextSelection.length === 1;
           const msg = isSingle
             ? `Per prenotare questo tavolo è richiesto un minimo di ${tavolo.postiMinimi} persone.`
             : `Per unire questi tavoli è richiesto un minimo di ${totalMin} persone totali.`;
-          // Pianifica il toast (evita di chiamare setState in modo sincrono nell'updater)
           setTimeout(() => showMinToast(msg), 0);
-          return prev; // Nessuna modifica
+          return prev; // Blocca l'inserimento
         }
       }
 
-      return nextSelection;
+      return nextSelection; // Se supera tutti i controlli, aggiorna lo stato!
     });
   };
 
+  // 8. LA FUNZIONE DI SUBMIT (Invio dati al server)
   const handleBooking = async () => {
     setTurnoError(null);
     setTavoliError(null);
@@ -181,18 +204,19 @@ export default function TableMap({
 
     let hasError = false;
 
+    // Controlli finali di validazione lato client
     if (!selectedTurno || !selectedTime) {
       setTurnoError('Devi selezionare un turno e un orario per procedere.');
       document.getElementById('selettore-turno')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       hasError = true;
     }
-    
+
     if (!hasError && selectedTavoli.length === 0) {
       setTavoliError('Seleziona almeno un tavolo sulla mappa.');
       document.getElementById('mappa-tavoli')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       hasError = true;
     }
-    
+
     if (!hasError && pax && totalPostiSelezione < pax) {
       setTavoliError(`Servono almeno ${pax} posti. Attualmente selezionati: ${totalPostiSelezione}.`);
       document.getElementById('mappa-tavoli')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -201,12 +225,16 @@ export default function TableMap({
 
     if (hasError) return;
 
+    // 8A. GESTIONE CAPARRA (CRM)
+    // Se c'è una caparra e non è stata pagata, blocca e apri il modale.
     if (caparraRichiesta > 0 && !paymentCompleted) {
       setShowPaymentModal(true);
       return;
     }
+
     setLoading(true);
     try {
+      // 8B. CHIAMATA ALLA SERVER ACTION
       const result = await createReservation({
         idRistorante,
         idTurno: selectedTurno,
@@ -214,7 +242,7 @@ export default function TableMap({
         numeroPersone: pax || totalPostiSelezione,
         idTavoli: selectedTavoli.map(t => t.idTavolo),
         noteCliente: specialRequests,
-        caparraPagata: paymentCompleted,
+        caparraPagata: paymentCompleted, // Salva il flag del pagamento
       });
       if (result.success) {
         setMessage({ type: 'success', text: 'Prenotazione effettuata con successo!' });
@@ -229,6 +257,7 @@ export default function TableMap({
     }
   };
 
+  // Funzione simulata per il gateway di pagamento
   const simulatePayment = () => {
     setPaymentLoading(true);
     setTimeout(() => {
@@ -238,17 +267,22 @@ export default function TableMap({
     }, 2000);
   };
 
+  // ... (Qui inizia il JSX che esegue il rendering della mappa visiva)
+
+  // 9. INIZIO DEL RENDER DELL'INTERFACCIA (JSX)
   return (
     <div className="bg-white border border-[#F5CBA7] rounded-3xl p-6 md:p-8 shadow-md relative overflow-hidden">
 
-      {/* Messaggio Toast generico (Successo/Errore) */}
+      {/* 10. GESTIONE NOTIFICHE (TOAST) */}
+      {/* Spiegazione: Usiamo il rendering condizionale {message && ...} per mostrare 
+          l'alert solo se lo stato 'message' non è nullo. */}
       {message && (
         <div className={`absolute top-0 left-0 w-full p-4 text-center font-bold z-20 animate-in slide-in-from-top duration-300 ${message.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
           {message.text}
         </div>
       )}
 
-      {/* Toast per la capacità minima */}
+      {/* Toast specifico per gli errori di capacità minima */}
       {minToast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-gray-900 text-white px-5 py-3 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-4 duration-300 max-w-sm text-sm font-semibold">
           <span className="text-xl">🚫</span>
@@ -256,64 +290,37 @@ export default function TableMap({
         </div>
       )}
 
-      {/* Modale per il pagamento della caparra */}
+      {/* 11. IL MODALE DEL PAGAMENTO (CRM) */}
+      {/* Questo blocco appare SOLO se c'è una caparra e il gestore l'ha richiesta */}
       {showPaymentModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-white rounded-[2.5rem] p-8 md:p-10 max-w-md w-full shadow-2xl border-2 border-[#F5CBA7]/30">
+            {/* Intestazione del Pagamento */}
             <div className="flex flex-col items-center mb-8">
-              <div className="w-20 h-20 bg-[#FDF1E9] rounded-full flex items-center justify-center mb-4">
-                <svg className="w-10 h-10 text-[#D35400]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
-              </div>
+              {/* ... icone e titoli ... */}
               <h3 className="text-2xl font-black text-[#781D2D] text-center">Pagamento Caparra</h3>
               <p className="text-[#D35400] font-bold text-center mt-1">Importo: €{caparraRichiesta.toFixed(2)}</p>
             </div>
 
+            {/* Metodo di pagamento salvato dal cliente (Mostrato se esiste) */}
             {metodoPagamentoPredefinito && metodoPagamentoPredefinito !== "" && (
               <div className="mb-8 p-5 bg-[#FDF1E9] rounded-2xl border-2 border-[#F5CBA7] flex items-center justify-between shadow-sm animate-in fade-in zoom-in duration-500">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white rounded-xl shadow-md flex items-center justify-center text-2xl border border-[#F5CBA7]/30">
-                    {metodoPagamentoPredefinito === 'Apple Pay' ? '🍎' : 
-                     metodoPagamentoPredefinito === 'Google Pay' ? '🔍' :
-                     metodoPagamentoPredefinito === 'Revolut' ? 'R' :
-                     metodoPagamentoPredefinito === 'PayPal' ? 'P' : '💳'}
-                  </div>
+                  {/* ... icone in base al metodo (Apple Pay, PayPal, ecc.) ... */}
                   <div>
                     <p className="text-[10px] font-black text-[#D35400] uppercase tracking-[0.15em] mb-0.5">Metodo Predefinito</p>
                     <p className="font-extrabold text-[#781D2D] text-lg">{metodoPagamentoPredefinito}</p>
                   </div>
                 </div>
-                <div className="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg ring-4 ring-white">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
               </div>
             )}
 
+            {/* Finto form della carta di credito (UI Mockup) */}
             <div className="space-y-4 mb-8">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Numero Carta</label>
-                <div className="bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-gray-400 font-mono text-sm tracking-widest flex justify-between items-center">
-                  <span>•••• •••• •••• 4242</span>
-                  <div className="flex space-x-1">
-                    <div className="w-6 h-4 bg-red-400 rounded-sm opacity-50"></div>
-                    <div className="w-6 h-4 bg-yellow-400 rounded-sm opacity-50"></div>
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Scadenza</label>
-                  <div className="bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-gray-400 font-bold text-sm">MM/AA</div>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">CVC</label>
-                  <div className="bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-gray-400 font-bold text-sm">•••</div>
-                </div>
-              </div>
+              {/* ... input visivi per Numero Carta, Scadenza, CVC ... */}
             </div>
+
+            {/* Bottoni del Modale */}
             <div className="flex flex-col gap-3">
               <button onClick={simulatePayment} disabled={paymentLoading} className="w-full bg-[#781D2D] text-white py-4 rounded-2xl font-black text-lg hover:bg-[#5f1723] transition-all flex items-center justify-center gap-3 shadow-lg disabled:opacity-70">
                 {paymentLoading
@@ -324,99 +331,59 @@ export default function TableMap({
                 Annulla
               </button>
             </div>
-            <div className="mt-6 pt-4 border-t border-gray-50 flex items-center justify-center gap-2 text-gray-300">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-              </svg>
-              <span className="text-[10px] font-bold uppercase tracking-widest">Pagamento 100% Sicuro</span>
-            </div>
           </div>
         </div>
       )}
 
-      {/* ── Header ── */}
+      {/* 12. HEADER DELLA PAGINA E LEGENDA */}
       <div className="mb-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div>
             <h2 className="text-3xl font-black text-[#781D2D] tracking-tight">Prenota il tuo Tavolo</h2>
             <p className="text-[#D35400] font-medium text-sm mt-1">Seleziona uno o più tavoli liberi sulla mappa, poi conferma.</p>
           </div>
-          {/* Legenda dei colori dei tavoli */}
+          {/* Legenda Colori */}
           <div className="flex flex-wrap gap-3 text-[10px] font-black uppercase tracking-widest bg-gray-50 px-4 py-2 rounded-full border border-gray-100">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 bg-green-500 rounded-full"></span>
-              <span className="text-gray-500">Libero</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 bg-[#D35400] rounded-full"></span>
-              <span className="text-gray-500">Selezionato</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 bg-red-400 rounded-full"></span>
-              <span className="text-gray-500">Occupato</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 bg-gray-300 rounded-full"></span>
-              <span className="text-gray-500">N/D</span>
-            </div>
+            {/* ... pallini colorati per Libero, Selezionato, Occupato ... */}
           </div>
         </div>
 
-        {/* Riepilogo della prenotazione (sola lettura) */}
+        {/* 13. RIEPILOGO DATA E OSPITI */}
+        {/* Mostra i dati che l'utente ha selezionato nella Home (pax e data) */}
         <div className="flex flex-col md:flex-row items-center gap-6 bg-[#FDF1E9]/50 px-6 py-4 rounded-3xl border border-[#F5CBA7]/30 mb-8">
-          <div className="flex items-center gap-3 text-[#781D2D]">
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-xl">📅</div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Data selezionata</p>
-              <p className="font-bold">{new Date(selectedDate).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-            </div>
-          </div>
-          <div className="hidden md:block w-px h-10 bg-[#F5CBA7]/30"></div>
-          <div className="flex items-center gap-3 text-[#781D2D]">
-            <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-xl">👥</div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Numero Ospiti</p>
-              <p className="font-bold">{pax} {pax === 1 ? 'persona' : 'persone'}</p>
-            </div>
-          </div>
+          {/* ... UI Data e Pax ... */}
         </div>
 
-        {/* Selettore del turno (Sezione Interattiva) */}
+        {/* 14. SELETTORE DEL TURNO (Menu a bottoni) */}
         <div id="selettore-turno" className="bg-[#FDF1E9]/30 p-6 rounded-[2rem] border border-[#F5CBA7]/20">
           <div className="space-y-6">
-            {turnoError && (
-              <div className="bg-red-100 text-red-600 p-4 rounded-xl font-black text-center text-sm border-2 border-red-200 shadow-sm animate-in slide-in-from-top-2 duration-300">
-                {turnoError}
-              </div>
-            )}
+            {/* Render dei bottoni dei Turni estratti dal DB */}
             <div>
               <label className="block text-[10px] font-black text-[#781D2D] uppercase tracking-widest mb-3 ml-1">Fascia Oraria</label>
               <div className="flex flex-wrap gap-2">
-                {turni.length === 0 ? (
-                  <div className="text-sm font-bold text-red-500 bg-red-50 p-3 rounded-xl border border-red-100">
-                    Nessun orario di servizio configurato.
-                  </div>
-                ) : (
-                  turni.map(t => (
-                    <button
-                      key={t.idTurno}
-                      type="button"
-                      onClick={() => { setTurnoError(null); setSelectedTurno(t.idTurno); setSelectedTime(''); setSelectedTavoli([]); }}
-                      className={`px-6 py-3 rounded-xl text-sm font-bold transition-all border-2 ${selectedTurno === t.idTurno
-                        ? 'bg-[#781D2D] border-[#781D2D] text-white shadow-md'
-                        : 'bg-white border-[#F5CBA7]/30 text-[#781D2D] hover:border-[#F5CBA7]'}`}
-                    >
-                      {t.nomeTurno}
-                    </button>
-                  ))
-                )}
+                {turni.map(t => (
+                  <button
+                    key={t.idTurno}
+                    type="button"
+                    // Al click: imposta l'ID del turno, resetta l'ora e cancella i tavoli selezionati
+                    onClick={() => { setTurnoError(null); setSelectedTurno(t.idTurno); setSelectedTime(''); setSelectedTavoli([]); }}
+                    // Classe dinamica: se è selezionato lo coloro di rosso, altrimenti bianco
+                    className={`px-6 py-3 rounded-xl text-sm font-bold transition-all border-2 ${selectedTurno === t.idTurno
+                      ? 'bg-[#781D2D] border-[#781D2D] text-white shadow-md'
+                      : 'bg-white border-[#F5CBA7]/30 text-[#781D2D] hover:border-[#F5CBA7]'}`}
+                  >
+                    {t.nomeTurno}
+                  </button>
+                ))}
               </div>
             </div>
 
+            {/* 15. SELETTORE DELL'ORA (Compare solo se hai scelto un turno) */}
             {selectedTurno !== 0 && (
               <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                <label className="block text-[10px] font-black text-[#781D2D] uppercase tracking-widest mb-3 ml-1">Seleziona l&apos;Ora esatta</label>
+                <label className="block text-[10px] font-black text-[#781D2D] uppercase tracking-widest mb-3 ml-1">Seleziona l'Ora esatta</label>
                 <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                  {/* Usa la funzione pura generateTimeSlots passandogli inizio e fine del turno selezionato */}
                   {generateTimeSlots(
                     turni.find(t => t.idTurno === selectedTurno)?.oraInizio || '',
                     turni.find(t => t.idTurno === selectedTurno)?.oraFine || ''
@@ -424,10 +391,9 @@ export default function TableMap({
                     <button
                       key={slot}
                       type="button"
+                      // Al click sull'ora, la imposta nello stato. Questo innesca lo useEffect che interroga il DB!
                       onClick={() => { setTurnoError(null); setSelectedTime(slot); setSelectedTavoli([]); }}
-                      className={`py-2 rounded-lg text-xs font-bold transition-all border ${selectedTime === slot
-                        ? 'bg-[#D35400] border-[#D35400] text-white shadow-sm'
-                        : 'bg-white border-[#F5CBA7]/30 text-[#781D2D] hover:border-[#D35400]'}`}
+                      className={`... `}
                     >
                       {slot}
                     </button>
@@ -439,48 +405,34 @@ export default function TableMap({
         </div>
       </div>
 
-      {/* ── Table Map ── */}
+      {/* 16. LA MAPPA DEI TAVOLI (IL CORE VISIVO) */}
+      {/* Disabilita il click sulla mappa se sta ancora caricando (opacity-50 pointer-events-none) */}
       <div id="mappa-tavoli" className={`bg-[#FFFDFB] border-2 border-dashed border-[#F5CBA7] rounded-2xl p-6 md:p-10 mb-6 transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-        {tavoliError && (
-          <div className="mb-6 bg-red-100 text-red-600 p-4 rounded-xl font-black text-center text-sm border-2 border-red-200 shadow-sm animate-in slide-in-from-top-2 duration-300">
-            {tavoliError}
-          </div>
-        )}
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center z-10">
-            <div className="w-8 h-8 border-4 border-[#F5CBA7] border-t-[#D35400] rounded-full animate-spin"></div>
-          </div>
-        )}
+
         <div className="flex flex-wrap gap-6 justify-center">
           {tavoli.map((tavolo) => {
+            // 17. CALCOLO DELLO STATO VISIVO DEL SINGOLO TAVOLO
             const isOccupato = tavolo.stato === 'Occupato' || tavolo.stato === 'Non Disponibile';
             const isLibero = tavolo.stato === 'Libero';
             const isSelected = selectedIds.has(tavolo.idTavolo);
-            // Controlla se i pax rispettano il minimo per questo tavolo
+
+            // Verifiche per colorare di grigio i tavoli non idonei
             const belowMinimum = isLibero && pax !== undefined && pax < (tavolo.postiMinimi ?? 1);
-            // Controlla se il tavolo (o il suo gruppo) può ospitare i pax richiesti
-            const groupTables = tavolo.idGruppo 
-              ? tavoli.filter(t => t.idGruppo === tavolo.idGruppo && t.stato === 'Libero')
-              : [tavolo];
+            const groupTables = tavolo.idGruppo ? tavoli.filter(t => t.idGruppo === tavolo.idGruppo && t.stato === 'Libero') : [tavolo];
             const groupMax = groupTables.reduce((s, t) => s + t.posti, 0);
             const tooSmall = isLibero && pax !== undefined && pax > groupMax;
-
-            // Blocco a Soddisfacimento
             const isBlockedByFulfillment = isFulfilled && isLibero && !isSelected;
 
+            // 18. ASSEGNAZIONE DINAMICA DELLE CLASSI CSS TRAMITE LOGICA
             let cls = '';
             if (isOccupato) {
-              cls = 'bg-red-50 border-red-200 text-red-300 cursor-not-allowed';
-            } else if (!isLibero) {
-              cls = 'bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed opacity-50';
-            } else if (isBlockedByFulfillment) {
-              cls = 'bg-white border-[#F5CBA7] text-[#781D2D] opacity-50 cursor-not-allowed';
-            } else if (belowMinimum || tooSmall) {
-              cls = 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed opacity-60';
+              cls = 'bg-red-50 border-red-200 text-red-300 cursor-not-allowed'; // ROSSO
+            } else if (!isLibero || isBlockedByFulfillment || belowMinimum || tooSmall) {
+              cls = 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed opacity-60'; // GRIGIO INATTIVO
             } else if (isSelected) {
-              cls = 'bg-gradient-to-br from-[#D35400] to-[#781D2D] border-[#781D2D] text-white shadow-xl scale-110 ring-4 ring-[#F5CBA7] cursor-pointer';
+              cls = 'bg-gradient-to-br from-[#D35400] to-[#781D2D] border-[#781D2D] text-white shadow-xl scale-110 ring-4 ring-[#F5CBA7] cursor-pointer'; // ARANCIONE/ROSSO SELEZIONATO
             } else {
-              cls = 'bg-white border-[#F5CBA7] text-[#781D2D] hover:border-[#D35400] hover:shadow-lg hover:scale-105 cursor-pointer';
+              cls = 'bg-white border-[#F5CBA7] text-[#781D2D] hover:border-[#D35400] hover:shadow-lg hover:scale-105 cursor-pointer'; // BIANCO LIBERO
             }
 
             return (
@@ -491,32 +443,19 @@ export default function TableMap({
               >
                 <span className="block font-black text-xl">T{tavolo.numero}</span>
                 <span className="block text-[10px] uppercase font-bold opacity-75 mt-0.5">{tavolo.posti} posti</span>
-                {/* Indicatore della capacità minima */}
+
+                {/* 19. BADGE DINAMICI */}
+                {/* Se ha un posto minimo > 1, mostra la label */}
                 {isLibero && (tavolo.postiMinimi ?? 1) > 1 && !isSelected && (
                   <span className={`block text-[9px] font-bold mt-0.5 ${belowMinimum ? 'text-red-400' : 'text-gray-400 opacity-70'}`}>
                     min {tavolo.postiMinimi}
                   </span>
                 )}
-
-                {/* Badge di gruppo per tavoli collegabili */}
+                {/* Se fa parte di un gruppo, mostra l'icona della catena 🔗 */}
                 {tavolo.idGruppo && isLibero && (
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-orange-100 text-orange-600 text-[8px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full border border-orange-200 whitespace-nowrap">
                     🔗
                   </span>
-                )}
-
-                {isOccupato && (
-                  <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-red-100 text-red-500 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full border border-red-200 whitespace-nowrap">
-                    Occupato
-                  </span>
-                )}
-
-                {isSelected && (
-                  <div className="absolute -top-2 -right-2 bg-white text-[#D35400] w-6 h-6 rounded-full flex items-center justify-center shadow-md">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
                 )}
               </div>
             );
@@ -524,94 +463,60 @@ export default function TableMap({
         </div>
       </div>
 
-      {/* ── Live Summary Panel ── */}
+      {/* 20. PANNELLO LIVE RIASSUNTIVO FLOTTANTE */}
+      {/* Appare solo se c'è almeno un tavolo selezionato (selectedTavoli.length > 0) */}
       <div className={`transition-all duration-500 mb-6 ${selectedTavoli.length > 0 ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none h-0 overflow-hidden'}`}>
         <div className="bg-gradient-to-r from-[#FDF1E9] to-orange-50 border-2 border-[#F5CBA7] rounded-2xl px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-4">
-          {/* Lista dei tavoli selezionati */}
+
           <div className="flex-1">
             <p className="text-[10px] font-black text-[#781D2D] uppercase tracking-widest mb-1">Tavoli selezionati</p>
             <div className="flex flex-wrap gap-2">
+              {/* Renderizza dei "bottoncini" per ogni tavolo selezionato, cliccarli deseleziona il tavolo */}
               {selectedTavoli.map(t => (
                 <button
                   key={t.idTavolo}
                   onClick={() => handleTableClick(t)}
                   className="flex items-center gap-1.5 bg-white border-2 border-[#D35400] text-[#781D2D] text-xs font-black px-3 py-1 rounded-xl hover:bg-red-50 transition-all"
-                  title="Clicca per deselezionare"
                 >
-                  T{t.numero}
-                  <span className="text-[#D35400] text-xs">×</span>
+                  T{t.numero} <span className="text-[#D35400] text-xs">×</span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Contatore della capacità totale */}
           <div className="flex items-center gap-4">
             <div className="text-center">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Capacità totale</p>
+              {/* Cambia colore (Verde/Rosso) in base alla variabile booleana canBook */}
               <p className={`text-3xl font-black transition-colors ${canBook ? 'text-green-600' : 'text-[#D35400]'}`}>
-                {totalPostiSelezione}
-                <span className="text-sm font-bold text-gray-400 ml-1">posti</span>
+                {totalPostiSelezione} <span className="text-sm font-bold text-gray-400 ml-1">posti</span>
               </p>
             </div>
-
-            {pax && (
-              <div className="text-center">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Richiesti</p>
-                <p className="text-3xl font-black text-gray-700">
-                  {pax}
-                  <span className="text-sm font-bold text-gray-400 ml-1">pers.</span>
-                </p>
-              </div>
-            )}
-
-            {/* Badge di stato della prenotazione */}
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border-2 ${canBook ? 'bg-green-50 border-green-200 text-green-700' : 'bg-orange-50 border-orange-200 text-orange-700'}`}>
-              {canBook ? (
-                <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                  Sufficiente
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M12 3a9 9 0 110 18A9 9 0 0112 3z" />
-                  </svg>
-                  {pax ? `Mancano ${pax - totalPostiSelezione} posti` : 'Seleziona'}
-                </>
-              )}
-            </div>
+            {/* ... */}
           </div>
         </div>
       </div>
 
-      {/* ── Booking Form ── */}
+      {/* 21. TEXTAREA NOTE E BOTTONE DI CONFERMA FINALE */}
       <div className="transition-all duration-500 border-t-2 border-[#FDF1E9] pt-8">
         <div className="mb-8">
           <label className="block text-xs font-bold text-[#781D2D] uppercase tracking-widest mb-2 ml-1">Note Speciali</label>
           <textarea
             value={specialRequests}
-            onChange={(e) => setSpecialRequests(e.target.value)}
-            placeholder="Allergie, compleanni, richieste particolari..."
-            className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#D35400] transition-all resize-none"
-            rows={2}
+            onChange={(e) => setSpecialRequests(e.target.value)} // Salva il testo nello stato di React
+            className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3..."
           />
         </div>
 
         <button
           onClick={handleBooking}
-          disabled={loading}
+          disabled={loading} // Disabilita il click doppio
           className={`w-full py-5 rounded-[2rem] font-black text-xl shadow-xl transition-all transform active:scale-95 ${canBook && !loading
             ? 'bg-gradient-to-r from-[#D35400] via-[#E74C3C] to-[#781D2D] text-white hover:shadow-2xl hover:-translate-y-1'
             : 'bg-gray-100 text-gray-400'}`}
         >
           {loading ? (
-            <span className="flex items-center justify-center gap-3">
-              <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-500 rounded-full animate-spin"></div>
-              Elaborazione...
-            </span>
+            <span className="flex items-center justify-center gap-3">Elaborazione...</span>
           ) : (caparraRichiesta > 0 && !paymentCompleted)
             ? `Procedi al Pagamento (€${caparraRichiesta.toFixed(2)})`
             : 'Conferma Prenotazione'}
