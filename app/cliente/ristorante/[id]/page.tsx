@@ -1,32 +1,45 @@
+// Importa la libreria nativa per interagire con database SQLite in modo sincrono e ad alte prestazioni
 import Database from 'better-sqlite3';
+// Importa il modulo nativo di Node.js per gestire e risolvere i percorsi dei file nel sistema operativo
 import path from 'path';
 
+// Importa l'utility di Next.js per leggere i cookie di sessione lato server
 import { cookies } from 'next/headers';
 import Navbar from '@/components/Navbar';
 import TableMap from '@/components/TableMap';
 import RestaurantGallery from '@/components/RestaurantGallery';
+// Importa funzioni server-side esterne per garantire l'esistenza delle tabelle e recuperare i dati del profilo cliente
 import { ensureGalleriaTable } from '@/app/actions/ristoranti';
 import { getClientProfile } from '@/app/actions/cliente';
 
 export const dynamic = 'force-dynamic';
+// Componente principale asincrono. Riceve nelle props due Promise: 'params' (ID nell'URL) e 'searchParams' (query string dell'URL)
 export default async function RistoranteDettaglio({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ pax?: string; data?: string }> }) {
+  // Attende la risoluzione della Promise 'params' per estrarre l'ID del ristorante specifico
   const { id } = await params;
   const sParams = await searchParams;
   const pax = parseInt(sParams?.pax || '1', 10);
+  // Recupera la data dall'URL. Se non c'è, genera la stringa della data di oggi (YYYY-MM-DD)
   const data = sParams?.data || new Date().toISOString().split('T')[0];
 
+  // Recupera lo store dei cookie ed estrae lo stato di login controllando la presenza del cookie di sessione
   const cookieStore = await cookies();
   const isLoggedIn = cookieStore.has('seateasy_session');
+  // Operatore ternario: se l'utente è loggato recupera il suo profilo dal database tramite l'azione, altrimenti imposta null
   const profile = isLoggedIn ? await getClientProfile() : null;
 
+  // Risolve il percorso assoluto del file del database partendo dalla cartella principale del progetto (process.cwd())
   const dbPath = path.resolve(process.cwd(), 'database.db');
+  // Apre una connessione attiva con il database SQLite usando il percorso appena calcolato
   const db = new Database(dbPath);
 
-  // Assicurati che la tabella galleria esista
+  // Esegue un'azione di controllo preventiva sul server per assicurarsi che la tabella delle immagini ("galleria") sia creata
   await ensureGalleriaTable();
 
+  // Prepara ed esegue una query SQL per recuperare i dati del ristorante singolo usando l'id passato come parametro sicuro
   const ristorante = db.prepare('SELECT * FROM Ristorante WHERE idRistorante = ?').get(id) as any;
 
+  // Controllo di sicurezza: se la query non restituisce alcun ristorante (id errato), interrompe il flusso e renderizza la pagina di errore
   if (!ristorante) {
     return (
       <div className="min-h-screen bg-[#FFFDFB] font-sans flex flex-col pt-20">
@@ -39,7 +52,7 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
     );
   }
 
-  // Recupera i turni per il ristorante
+  // Esegue una query SQL con una INNER JOIN tra le tabelle "Turno" e "Orario" per estrarre tutti i turni di servizio associati al ristorante
   const turni = db.prepare(`
     SELECT T.idTurno, O.nome AS nomeTurno, O.oraInizio, O.oraFine
     FROM Turno T
@@ -47,10 +60,10 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
     WHERE O.idRistorante = ?
   `).all(id) as any[];
 
-  // Recupera i tavoli (base)
+  // Esegue una query SQL con INNER JOIN per estrarre l'elenco dei tavoli mappati all'interno delle sale appartenenti a questo ristorante
   const tavoliBase = db.prepare('SELECT T.* FROM Tavolo T JOIN Sala S ON T.idSala = S.idSala WHERE S.idRistorante = ?').all(id) as any[];
 
-  // Recupera le recensioni reali
+  // Recupera l'elenco delle recensioni dei clienti per questo ristorante ordinandole dalle più recenti (DESC) unendo i dati dell'account autore
   const recensioni = db.prepare(`
     SELECT R.*, A.nome as username
     FROM Recensione R
@@ -59,17 +72,19 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
     ORDER BY R.dataCreazione DESC
   `).all(id) as any[];
 
-  // Recupera la galleria
+  // Recupera le immagini inserite nella galleria di questo ristorante ordinate in modo decrescente per ID
   const galleria = db.prepare('SELECT * FROM GalleriaRistorante WHERE idRistorante = ? ORDER BY idImmagine DESC').all(id) as any[];
 
+  // Chiude in modo esplicito la connessione al database SQLite 
   db.close();
 
+  // Ritorna l'interfaccia grafica (JSX) della pagina iniettando tutti i dati estratti dal database
   return (
     <div className="min-h-screen bg-[#FFFDFB] font-sans flex flex-col">
       <Navbar isLoggedIn={isLoggedIn} />
 
       <main className="flex-1 pt-24 pb-20">
-        {/* Banner/Header Ristorante */}
+        {/* Banner/Header Ristorante con immagine di copertina e sfumatura scura */}
         <div className="relative w-full h-80 bg-[#FDF1E9] overflow-hidden">
           <img
             src={`https://images.unsplash.com/photo-1544148103-0773bf10d330?auto=format&fit=crop&w=1600&q=80`}
@@ -93,19 +108,19 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
           </div>
         </div>
 
-        {/* Gallery Slider */}
+        {/* Componente carosello che riceve l'array delle immagini della galleria estratte dal DB */}
         <RestaurantGallery items={galleria} />
 
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 space-y-16">
 
-          {/* Sezione Politiche */}
+          {/* Sezione Politiche Aziendali */}
           <section>
             <h2 className="text-2xl font-bold text-[#781D2D] mb-6 flex items-center border-b-2 border-[#F5CBA7] pb-2 inline-block">
               Politica del Ristorante
             </h2>
 
             <div className="bg-[#FDF1E9]/70 border border-[#e2b793]/40 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row gap-6">
-              {/* Caparra */}
+              {/* Box Caparra: operatore ternario per decidere la frase in base al valore numerico nel DB */}
               <div className="flex-1 bg-white p-5 rounded-xl border-l-4 border-[#D35400] shadow-sm">
                 <div className="flex items-center mb-3">
                   <div className="p-2 bg-[#FDF1E9] rounded-lg mr-3">
@@ -122,7 +137,7 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
                 </p>
               </div>
 
-              {/* Penale No-Show */}
+              {/* Box Penale No-Show: gestisce la visualizzazione della penale di mancata presentazione */}
               <div className="flex-1 bg-white p-5 rounded-xl border-l-4 border-[#E74C3C] shadow-sm">
                 <div className="flex items-center mb-3">
                   <div className="p-2 bg-[#fbe7e5] rounded-lg mr-3">
@@ -141,7 +156,7 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
             </div>
           </section>
 
-          {/* Interactive Table Map Section */}
+          {/* Componente interattivo della mappa dei tavoli che riceve le variabili estratte dal DB */}
           <section id="prenota" className="scroll-mt-32">
             <TableMap
               initialTavoli={tavoliBase}
@@ -154,7 +169,7 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
             />
           </section>
 
-          {/* Sezione Recensioni */}
+          {/* Sezione commenti e recensioni reali estratte ed elaborate via SQL */}
           <section>
             <h2 className="text-2xl font-bold text-[#781D2D] mb-6 flex items-center border-b-2 border-[#F5CBA7] pb-2 inline-block">
               Recensioni dei Clienti
@@ -164,10 +179,12 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
               {recensioni.length === 0 ? (
                 <p className="text-gray-400 italic text-sm py-4">Nessuna recensione ancora. Sii il primo a scriverne una!</p>
               ) : (
+                // Cicla l'array delle recensioni estratte dal database per mostrare ogni singola card
                 recensioni.map((rec) => (
                   <div key={rec.idRecensione} className="bg-white border border-[#F5CBA7]/40 rounded-xl p-5 shadow-sm">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-3">
+                        {/* Genera un immagine profilocircolare estraendo le prime due lettere dello username dell'autore */}
                         <div className="w-10 h-10 rounded-full bg-[#E74C3C] text-white flex justify-center items-center font-bold">
                           {rec.username.substring(0, 2).toUpperCase()}
                         </div>
@@ -176,6 +193,7 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
                           <p className="text-xs text-gray-400">{new Date(rec.dataCreazione).toLocaleDateString()}</p>
                         </div>
                       </div>
+                      {/* Ciclo finto di 5 elementi per stampare le stelline piene o vuote a seconda del punteggio numerico */}
                       <div className="flex items-center space-x-1">
                         {[...Array(5)].map((_, i) => (
                           <svg key={i} className={`w-5 h-5 ${i < rec.punteggio ? 'text-[#D35400]' : 'text-gray-200'}`} fill="currentColor" viewBox="0 0 20 20">
@@ -194,7 +212,7 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
         </div>
       </main>
 
-      {/* Footer */}
+      {/* Footer del sistema di gestione */}
       <footer className="bg-[#781D2D] text-[#F5CBA7] py-8 mt-auto border-t-4 border-[#D35400]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">
           <p className="text-[#F5CBA7]/80 font-medium text-sm">

@@ -1,30 +1,41 @@
-'use client';
+'use client'; // Comunica a Next.js di scaricare ed eseguire questo modulo sul browser, abilitando la gestione degli stati e degli eventi
 
 import React, { useState } from 'react';
+// Importa la Server Action che si occuperà di eseguire la query SQL di UPDATE sul database
 import { updateReservation } from '@/app/actions/cliente';
+// Importa lo hook di navigazione lato client
 import { useRouter } from 'next/navigation';
+// Importa le icone grafiche per migliorare l'esperienza visiva dei campi del form
 import { Calendar, Clock, Users, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
-export default function ModificaPrenotazioneClient({ 
-  reservation, 
-  turni 
-}: { 
-  reservation: any, 
-  turni: any[] 
+// Componente che riceve i dati pre-caricati dal Server Component padre
+export default function ModificaPrenotazioneClient({
+  reservation,
+  turni
+}: {
+  reservation: any,
+  turni: any[]
 }) {
+  // STATI LOCALI: Vengono inizializzati usando i valori correnti della prenotazione (Precompilazione del Form)
   const [numPersone, setNumPersone] = useState(reservation.numeroPersone);
   const [idTurno, setIdTurno] = useState(reservation.idTurno);
   const [dataPrenotazione, setDataPrenotazione] = useState(reservation.dataPrenotazione);
+  // Se le note sono null nel database, lo stato viene inizializzato con una stringa vuota per evitare bug nei componenti controllati
   const [noteCliente, setNoteCliente] = useState(reservation.noteCliente || "");
+
+  // Stati di controllo per la UX (caricamento e messaggi di feedback)
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
   const router = useRouter();
 
+  // Funzione che intercetta l'evento di sottomissione del form
   const handleUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
+    e.preventDefault(); // Blocca il ricaricamento nativo della pagina web causato dal form
+    setLoading(true);   // Attiva lo stato visivo di caricamento sul pulsante
+
+    // Invocazione della Server Action passando l'ID della riga da modificare e il payload con i nuovi dati
     const result = await updateReservation(reservation.idPrenotazione, {
       numeroPersone: numPersone,
       noteCliente,
@@ -33,23 +44,28 @@ export default function ModificaPrenotazioneClient({
     });
 
     if (result.success) {
+      // Se il backend risponde positivamente, mostra il banner verde di successo
       setMessage({ type: 'success', text: 'Modifica salvata!' });
+      // Attende 1.5 secondi per dare il tempo all'utente di leggere il messaggio, poi reindirizza alla dashboard delle prenotazioni
       setTimeout(() => router.push('/mie-prenotazioni'), 1500);
     } else {
+      // In caso di errore (es. tavolo non disponibile per quella data), mostra il banner rosso con il motivo
       setMessage({ type: 'error', text: result.error || 'Errore durante il salvataggio.' });
     }
-    setLoading(false);
+    setLoading(false); // Disattiva lo stato di caricamento
   };
 
   return (
     <div className="bg-white border border-[#F5CBA7]/60 rounded-[2.5rem] p-8 sm:p-12 shadow-2xl relative overflow-hidden">
-      
+
+      {/* BANNER DI FEEDBACK: Compare in cima alla card con un'animazione slide-in se lo stato 'message' non è null */}
       {message && (
         <div className={`absolute top-0 left-0 w-full p-4 text-center font-bold z-20 animate-in slide-in-from-top duration-300 ${message.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
           {message.text}
         </div>
       )}
 
+      {/* HEADER: Titolo del modulo e pulsante "Torna Indietro" */}
       <div className="flex items-center gap-4 mb-10">
         <Link href="/cliente/prenotazioni" className="p-3 bg-gray-50 hover:bg-[#FDF1E9] text-gray-400 hover:text-[#D35400] rounded-2xl transition-all">
           <ArrowLeft size={20} />
@@ -60,33 +76,36 @@ export default function ModificaPrenotazioneClient({
         </div>
       </div>
 
+      {/* FORM CONTROLLATO */}
       <form onSubmit={handleUpdate} className="space-y-8">
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Data */}
+          {/* SELEZIONE DATA */}
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-xs font-black text-[#781D2D] uppercase tracking-widest ml-1">
               <Calendar size={14} /> Data
             </label>
-            <input 
-              type="date" 
-              value={dataPrenotazione}
-              min={new Date().toISOString().split('T')[0]}
-              onChange={(e) => setDataPrenotazione(e.target.value)}
+            <input
+              type="date"
+              value={dataPrenotazione} // Legato allo stato locale
+              min={new Date().toISOString().split('T')[0]} // Impedisce la selezione di date passate impostando il giorno corrente come minimo
+              onChange={(e) => setDataPrenotazione(e.target.value)} // Aggiorna lo stato al cambio del valore
               className="w-full bg-[#FDF1E9]/50 border-2 border-transparent focus:border-[#F5CBA7] focus:bg-white rounded-2xl px-5 py-4 font-bold text-[#781D2D] outline-none transition-all"
             />
           </div>
 
-          {/* Turno */}
+          {/* SELEZIONE TURNO (ORARIO) */}
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-xs font-black text-[#781D2D] uppercase tracking-widest ml-1">
               <Clock size={14} /> Orario (Turno)
             </label>
-            <select 
+            <select
               value={idTurno}
+              // Converte esplicitamente la stringa catturata dal DOM in un tipo Number per allinearsi al database
               onChange={(e) => setIdTurno(Number(e.target.value))}
               className="w-full bg-[#FDF1E9]/50 border-2 border-transparent focus:border-[#F5CBA7] focus:bg-white rounded-2xl px-5 py-4 font-bold text-[#781D2D] outline-none transition-all appearance-none cursor-pointer"
             >
+              {/* Cicla l'array dei turni validi estratti dal server per creare le opzioni selezionabili */}
               {turni.map(t => (
                 <option key={t.idTurno} value={t.idTurno}>{t.nomeTurno} ({t.oraInizio})</option>
               ))}
@@ -95,29 +114,31 @@ export default function ModificaPrenotazioneClient({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Numero Persone */}
+          {/* SELEZIONE NUMERO OSPITI */}
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-xs font-black text-[#781D2D] uppercase tracking-widest ml-1">
               <Users size={14} /> Numero Ospiti
             </label>
-            <select 
+            <select
               value={numPersone}
               onChange={(e) => setNumPersone(Number(e.target.value))}
               className="w-full bg-[#FDF1E9]/50 border-2 border-transparent focus:border-[#F5CBA7] focus:bg-white rounded-2xl px-5 py-4 font-bold text-[#781D2D] outline-none transition-all appearance-none cursor-pointer"
             >
+              {/* VINCOLO FISICO: Genera dinamicamente un array di numeri che va da 1 fino al limite massimo di posti del tavolo assegnato */}
               {[...Array(reservation.postiMassimi)].map((_, i) => (
                 <option key={i} value={i + 1}>{i + 1} {i === 0 ? 'Persona' : 'Persone'}</option>
               ))}
             </select>
+            {/* Messaggio informativo di supporto che ricorda all'utente la capienza del tavolo specifico */}
             <p className="text-[10px] text-gray-400 font-bold ml-1 uppercase">Il tavolo T{reservation.numeroTavolo} può ospitare fino a {reservation.postiMassimi} persone.</p>
           </div>
 
-          {/* Note */}
+          {/* AREA DI TESTO NOTE CLIENTE */}
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-xs font-black text-[#781D2D] uppercase tracking-widest ml-1">
-               Esigenze Speciali
+              Esigenze Speciali
             </label>
-            <textarea 
+            <textarea
               value={noteCliente}
               onChange={(e) => setNoteCliente(e.target.value)}
               placeholder="Allergie, seggiolone, anniversario..."
@@ -127,20 +148,21 @@ export default function ModificaPrenotazioneClient({
           </div>
         </div>
 
+        {/* PULSANTI DI AZIONE FINALE */}
         <div className="pt-6 border-t border-gray-100 flex flex-col sm:flex-row gap-4">
-           <button 
-             type="submit"
-             disabled={loading}
-             className="flex-1 py-5 bg-gradient-to-r from-[#D35400] to-[#781D2D] text-white font-black text-lg rounded-[2rem] shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-1 active:scale-95 disabled:opacity-50"
-           >
-             {loading ? 'Salvataggio...' : 'Salva Modifiche'}
-           </button>
-           <Link 
-             href="/cliente/prenotazioni"
-             className="flex-1 py-5 bg-gray-50 text-gray-500 font-bold text-lg rounded-[2rem] border border-gray-100 hover:bg-gray-100 transition-all flex items-center justify-center"
-           >
-             Annulla
-           </Link>
+          <button
+            type="submit"
+            disabled={loading} // Disabilita il pulsante durante la trasmissione di rete
+            className="flex-1 py-5 bg-gradient-to-r from-[#D35400] to-[#781D2D] text-white font-black text-lg rounded-[2rem] shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-1 active:scale-95 disabled:opacity-50"
+          >
+            {loading ? 'Salvataggio...' : 'Salva Modifiche'}
+          </button>
+          <Link
+            href="/cliente/prenotazioni"
+            className="flex-1 py-5 bg-gray-50 text-gray-500 font-bold text-lg rounded-[2rem] border border-gray-100 hover:bg-gray-100 transition-all flex items-center justify-center"
+          >
+            Annulla
+          </Link>
         </div>
       </form>
     </div>
