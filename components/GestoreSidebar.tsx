@@ -40,66 +40,100 @@ function SidebarContent() {
     { name: 'Galleria Immagini', href: `/gestore/galleria${qs}`, icon: ImageIcon },
     { name: 'Relazioni Clienti', href: `/gestore/relazioni${qs}`, icon: MessageSquareHeart },
   ];
-  {/* Usiamo .map() per scorrere l'array di link creato prima e stamparli a schermo */ }
-  {
-    navItems.map(item => {
-      // Controlliamo se la pagina in cui siamo (pathname) corrisponde al link del bottone.
-      // Il .split('?')[0] serve a ignorare la query string per fare il confronto pulito.
-      const isActive = pathname.startsWith(item.href.split('?')[0]);
-      const Icon = item.icon;
 
-      // Se non c'è un ristorante selezionato, blocchiamo i bottoni.
-      const isDisabled = !ristoranteId;
+  return (
+    // Contenitore principale della sidebar: larghezza fissa, altezza minima tutto schermo,
+    // sfondo bianco e una leggera ombra per staccarla dal resto della pagina.
+    <div className="w-64 min-h-screen bg-white shadow-xl border-r border-[#F5CBA7]/40 flex flex-col z-50 relative">
 
-      // RENDERING CONDIZIONALE: Se manca l'ID, stampiamo un finto bottone grigio non cliccabile
-      if (isDisabled) {
-        return (
-          // La 'key' è obbligatoria in React quando si usa .map()
-          <div
-            key={item.name}
-            className="flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-gray-300 cursor-not-allowed opacity-50 select-none"
-            title="Seleziona un ristorante per sbloccare questa sezione"
-          >
-            <Icon size={20} />
-            {item.name}
-          </div>
-        );
-      }
+      {/* Brand Header: qui mostriamo il logo e la label di stato "Gestore Beta" */}
+      <div className="p-6 pb-2 border-b border-[#F5CBA7]/30">
+        <Link href="/gestore/ristoranti" className="block">
+          <Logo className="mb-2 scale-75 origin-left" />
+        </Link>
+        <div className="mt-4">
+          <span className="bg-[#F5CBA7]/30 text-[#D35400] text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded">Gestore Beta</span>
+        </div>
+      </div>
 
-      // Se invece c'è l'ID, stampiamo il vero Link di Next.js
-      return (
+      {/* Navigazione Principale: qui mappo l'array 'navItems' per generare i link */}
+      <nav className="flex-1 px-4 py-6 space-y-2">
+        <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 ml-2">Menu Principale</span>
+
+        {navItems.map(item => {
+          // Logica per evidenziare il bottone della pagina in cui mi trovo.
+          // Ignoro la query string (?ristorante=X) per fare il check corretto del path.
+          const isActive = pathname.startsWith(item.href.split('?')[0]);
+          const Icon = item.icon;
+
+          // Se l'utente non ha selezionato un ristorante, questi link sono inutili,
+          // quindi li rendo visivamente disabilitati.
+          const isDisabled = !ristoranteId;
+
+          if (isDisabled) {
+            return (
+              <div
+                key={item.name}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-gray-300 cursor-not-allowed opacity-50 select-none"
+                title="Seleziona un ristorante per sbloccare questa sezione"
+              >
+                <Icon size={20} />
+                {item.name}
+              </div>
+            );
+          }
+
+          // Se tutto ok, stampo il link attivo o in stato hover.
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              // Tailwind dinamico: se è attivo uso il gradiente "SeatEasy style", altrimenti hover leggero.
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${isActive
+                ? 'bg-gradient-to-r from-[#781D2D] to-[#5f1723] text-white shadow-md transform scale-[1.02]'
+                : 'text-gray-500 hover:bg-[#FDF1E9] hover:text-[#781D2D]'
+                }`}
+            >
+              <Icon size={20} className={isActive ? 'text-[#F5CBA7]' : ''} />
+              {item.name}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Sezione Bassa: Profilo utente e bottone di logout */}
+      <div className="p-4 border-t border-[#F5CBA7]/30 bg-gray-50/50">
+        <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 ml-2">Account</span>
+
+        {/* Link diretto alla gestione profilo */}
         <Link
-          key={item.name}
-          href={item.href}
-          // Qui usiamo i backtick (`) per iniettare le classi Tailwind in modo dinamico.
-          // Se è attivo (isActive = true) mettiamo il colore scuro col gradiente, altrimenti grigio chiaro.
-          className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${isActive
-              ? 'bg-gradient-to-r from-[#781D2D] to-[#5f1723] text-white shadow-md transform scale-[1.02]'
-              : 'text-gray-500 hover:bg-[#FDF1E9] hover:text-[#781D2D]'
+          href="/gestore/profilo"
+          className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all mb-2 ${pathname.startsWith('/gestore/profilo')
+              ? 'bg-gray-200 text-gray-800 shadow-inner'
+              : 'text-gray-500 hover:bg-white hover:shadow-sm'
             }`}
         >
-          {/* Cambiamo colore anche all'iconina se il bottone è attivo */}
-          <Icon size={20} className={isActive ? 'text-[#F5CBA7]' : ''} />
-          {item.name}
+          <User size={20} />
+          Il mio Profilo
         </Link>
-      );
-    })
-  }
-      </nav >
 
-    {/* BLOCCO ACCOUNT E LOGOUT */ }
-  {/* ... (Codice dei bottoni profilo e logout, usa la stessa logica vista sopra) ... */ }
-
-    </div >
+        {/* Bottone Logout: richiama la Server Action 'handleLogout' definita sopra */}
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-start gap-3 px-4 py-3 rounded-xl font-bold text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors"
+        >
+          <LogOut size={20} />
+          Disconnetti
+        </button>
+      </div>
+    </div>
   );
 }
 
-// IL VERO COMPONENTE CHE ESPORTIAMO
+// Esporto il componente avvolto in Suspense, essenziale perché useSearchParams 
+// richiede un limite di rendering (boundary) quando si usa in client components.
 export default function GestoreSidebar() {
   return (
-    // Avvolgiamo tutto dentro Suspense. Se non lo facciamo, Next.js dà errore durante 
-    // la build perché stiamo leggendo l'URL (con useSearchParams) in un componente.
-    // Nel 'fallback' mettiamo un rettangolo grigio che lampeggia (animate-pulse) mentre carica.
     <Suspense fallback={<div className="w-64 min-h-screen bg-white shadow-xl border-r border-[#F5CBA7]/40 z-50 relative animate-pulse"></div>}>
       <SidebarContent />
     </Suspense>
