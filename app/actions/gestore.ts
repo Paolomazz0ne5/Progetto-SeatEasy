@@ -225,7 +225,7 @@ export async function getAvailableTablesForManual(idRistorante: number, date: st
 export async function createManualReservation(data: {
   idRistorante: number,
   idTurno: number,
-  dataPrenotazione: string, // YYYY-MM-DD HH:MM
+  dataPrenotazione: string,
   numeroPersone: number,
   idTavolo: number,
   nomeCliente: string,
@@ -236,7 +236,7 @@ export async function createManualReservation(data: {
     const transaction = db.transaction(() => {
       // 1. Creiamo un account "fittizio" univoco per questo cliente manuale.
       // Generiamo una email random per superare il vincolo UNIQUE NOT NULL.
-      const fakeEmail = `manual_${Date.now()}_${Math.floor(Math.random() * 1000)}@seateasy.local`;
+      const fakeEmail = "manual_" + Date.now() + "_" + Math.floor(Math.random() * 1000) + "@seateasy.local";
       
       const insertAccount = db.prepare('INSERT INTO Account (email, password, nome, cognome, telefono) VALUES (?, ?, ?, ?, ?)');
       const resAccount = insertAccount.run(fakeEmail, 'manual_password', data.nomeCliente, '(Manuale)', data.telefono || null);
@@ -246,10 +246,7 @@ export async function createManualReservation(data: {
       insertCliente.run(idCliente);
 
       // 2. Inseriamo la prenotazione
-      const insertPrenotazione = db.prepare(`
-        INSERT INTO Prenotazione (idCliente, idTurno, dataPrenotazione, numeroPersone, stato, noteCliente, caparraPagata)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `);
+      const insertPrenotazione = db.prepare("INSERT INTO Prenotazione (idCliente, idTurno, dataPrenotazione, numeroPersone, stato, noteCliente, caparraPagata) VALUES (?, ?, ?, ?, ?, ?, ?)");
       const note = 'Prenotazione inserita manualmente dal gestore.';
       const resPrenotazione = insertPrenotazione.run(
         idCliente, 
@@ -263,10 +260,7 @@ export async function createManualReservation(data: {
       const idPrenotazione = resPrenotazione.lastInsertRowid;
 
       // 3. Associamo il tavolo scelto (OccupazioneTavolo)
-      const insertTavolo = db.prepare(`
-        INSERT INTO OccupazioneTavolo (idTavolo, idPrenotazione)
-        VALUES (?, ?)
-      `);
+      const insertTavolo = db.prepare("INSERT INTO OccupazioneTavolo (idTavolo, idPrenotazione) VALUES (?, ?)");
       insertTavolo.run(data.idTavolo, idPrenotazione);
 
       return idPrenotazione;
