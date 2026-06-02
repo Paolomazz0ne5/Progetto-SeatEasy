@@ -127,6 +127,7 @@ export default async function GestoreDashboard({
           reservations={rawReservations}
           stats={{ attive, noShows }}
           penaleInfo={{ amount: ownership.penaleNoShow, message: ownership.messaggioPenale }}
+          idRistorante={ristoranteId}
         />
       </div>
     </>
