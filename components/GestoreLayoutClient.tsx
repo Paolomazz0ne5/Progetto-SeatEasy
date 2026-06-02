@@ -174,29 +174,29 @@ export default function GestoreLayoutClient({ initialSale, idRistorante }: { ini
   // DA QUI IN POI INIZIA LA PARTE GRAFICA (L'HTML DELLA PAGINA FATTO CON REACT)
   // ============================================================================
   return (
-    <div className="w-full flex text-[#781D2D]">
+    <div className="w-full flex flex-col md:flex-row text-[#781D2D]">
 
       {/* BARRA LATERALE A SINISTRA - Dove ci sono le sale e i bottoni grandi */}
-      <div className="w-1/4 min-w-[250px] bg-white/60 backdrop-blur-xl border-r border-white/40 shadow-sm min-h-[70vh] p-6 rounded-l-3xl flex flex-col">
+      <div className="w-full md:w-1/4 md:min-w-[250px] bg-white/60 backdrop-blur-xl border-b md:border-b-0 md:border-r border-white/40 shadow-sm md:min-h-[70vh] p-4 md:p-6 rounded-t-3xl md:rounded-tr-none md:rounded-l-3xl flex flex-col">
 
-        <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+        <h2 className="text-xl font-bold mb-4 md:mb-6 flex items-center gap-2">
           <LayoutDashboard className="text-[#D35400]" size={22} /> Sale
         </h2>
 
         {/* Qui stampo l'elenco di tutte le sale a mo' di bottoni */}
-        <div className="space-y-2 flex-1">
+        <div className="flex overflow-x-auto md:flex-col gap-3 md:gap-0 md:space-y-2 flex-1 pb-4 md:pb-0 hide-scrollbar">
           {sale.map(s => (
             <button
               key={s.idSala}
               // Quando clicco una sala, la imposto come attiva e azzero tutte le modifiche per sicurezza
               onClick={() => { setActiveSalaId(s.idSala); setIsEditMode(false); setIsLinkMode(false); setSelectedTavoliIds([]); }}
               // Se è la sala attiva le metto lo sfondo rosso, altrimenti è bianca
-              className={`w-full text-left px-4 py-3 rounded-xl font-bold transition-all ${activeSalaId === s.idSala
+              className={`min-w-max md:w-full text-left px-4 py-3 rounded-xl font-bold transition-all shrink-0 ${activeSalaId === s.idSala
                 ? 'bg-[#781D2D] text-white shadow-md'
                 : 'bg-white/80 text-gray-600 hover:bg-[#FDF1E9] hover:text-[#781D2D]'
                 }`}
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <span>{s.nome}</span>
                 {/* Stampo quanti tavoli ha dentro questa sala */}
                 <span className={`text-xs px-2 py-1 rounded-full ${activeSalaId === s.idSala ? 'bg-white/20' : 'bg-gray-100'}`}>
@@ -212,7 +212,7 @@ export default function GestoreLayoutClient({ initialSale, idRistorante }: { ini
         </div>
 
         {/* Pannello dei bottoni di azione (in basso a sinistra) */}
-        <div className="pt-6 border-t border-[#F5CBA7]/40 space-y-3">
+        <div className="pt-4 md:pt-6 border-t border-[#F5CBA7]/40 space-y-3">
 
           {/* Bottone per creare nuova sala */}
           <button
@@ -287,7 +287,7 @@ export default function GestoreLayoutClient({ initialSale, idRistorante }: { ini
 
 
       {/* ZONA CENTRALE - LA MAPPA DOVE VEDO FISICAMENTE I TAVOLI */}
-      <div className="flex-1 bg-[#FFFDFB]/60 backdrop-blur-sm p-8 rounded-r-3xl border border-[#F5CBA7]/30 shadow-sm relative relative">
+      <div className="flex-1 w-full bg-[#FFFDFB]/60 backdrop-blur-sm p-4 md:p-8 rounded-b-3xl md:rounded-bl-none md:rounded-r-3xl border border-[#F5CBA7]/30 shadow-sm relative">
         <div className="flex items-center justify-between mb-8">
           <h3 className="text-2xl font-extrabold text-[#781D2D] flex items-center gap-3">
             {activeSala ? activeSala.nome : 'Seleziona o crea una sala'}
@@ -308,7 +308,7 @@ export default function GestoreLayoutClient({ initialSale, idRistorante }: { ini
         {/* Se ho una sala selezionata, disegno la griglia dei tavoli */}
         {activeSala ? (
           // Questa è la CSS GRID: i tavoli si mettono in fila da soli. Niente coordinate complicate sul DB!
-          <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 place-items-center bg-white/50 p-8 rounded-3xl min-h-[400px] border-2 ${isEditMode ? 'border-dashed border-[#D35400] bg-[url("/grid-pattern.svg")]' : 'border-solid border-[#F5CBA7]/50'}`}>
+          <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6 place-items-center bg-white/50 p-4 md:p-8 rounded-3xl min-h-[400px] border-2 ${isEditMode ? 'border-dashed border-[#D35400] bg-slate-50' : 'border-solid border-[#F5CBA7]/50'}`}>
 
             {/* Faccio un ciclo (map) su tutti i tavoli della sala e li stampo a schermo uno ad uno */}
             {activeSala.tavoli.map(tavolo => {

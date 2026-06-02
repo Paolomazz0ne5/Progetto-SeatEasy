@@ -2,10 +2,10 @@
 // Ci serve perché usiamo "useState" e gestiamo i click sui bottoni.
 'use client';
 
-import React, { useState } from 'react';
-import { Trash2, Edit, AlertTriangle, UserX, X, CheckCircle, ShieldAlert } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Trash2, Edit, AlertTriangle, UserX, X, CheckCircle, ShieldAlert, Plus } from 'lucide-react';
 // Importiamo le nostre Server Actions (il backend) per modificare il database
-import { deleteReservation, updateReservation, markNoShow } from '@/app/actions/gestore';
+import { deleteReservation, updateReservation, markNoShow, getAvailableTablesForManual, createManualReservation } from '@/app/actions/gestore';
 
 // [TYPESCRIPT]: Definiamo lo "scheletro" di una prenotazione. 
 // Aiuta l'editor a darci l'autocompletamento e previene errori di battitura.
@@ -29,10 +29,12 @@ export default function GestoreDashboardClient({
   reservations,
   stats,
   penaleInfo,
+  idRistorante,
 }: {
   reservations: ReservationData[];
   stats: { attive: number; noShows: number };
   penaleInfo: { amount: number; message: string | null };
+  idRistorante: number;
 }) {
 
   // STATI DI CARICAMENTO: Ci serve per disabilitare la riga della tabella 
@@ -53,6 +55,79 @@ export default function GestoreDashboardClient({
 
   // Per capire se dobbiamo applicare la penale (se aveva pagato una caparra)
   const [noShowPenalty, setNoShowPenalty] = useState(false);
+
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // --- STATI PER LA PRENOTAZIONE MANUALE ---
+  // Memorizziamo i valori mentre l'utente digita per poter interrogare il DB sui tavoli liberi
+  const [manualData, setManualData] = useState('');
+  const [manualOra, setManualOra] = useState('');
+  const [manualPax, setManualPax] = useState(2);
+  const [freeTables, setFreeTables] = useState<any[]>([]);
+  const [availableTurnoId, setAvailableTurnoId] = useState<number | null>(null);
+  const [isSearchingTables, setIsSearchingTables] = useState(false);
+
+  // Effetto "reattivo": scatta in automatico ogni volta che cambiano Data, Ora o Pax.
+  // Invia una richiesta al backend per sapere quali tavoli sono effettivamente liberi.
+  useEffect(() => {
+    async function fetchTables() {
+      // Controllo di validità: cerchiamo i tavoli solo se i campi chiave sono compilati
+      if (manualData && manualOra && manualPax > 0) {
+        setIsSearchingTables(true);
+        const res = await getAvailableTablesForManual(idRistorante, manualData, manualOra, manualPax);
+        
+        if (res.success && res.freeTables) {
+          setFreeTables(res.freeTables);
+          setAvailableTurnoId(res.idTurno || null);
+        } else {
+          setFreeTables([]);
+          setAvailableTurnoId(null);
+        }
+        setIsSearchingTables(false);
+      }
+    }
+    fetchTables();
+  }, [idRistorante, manualData, manualOra, manualPax]);
+
+  // Gestione del salvataggio definitivo della prenotazione manuale
+  const handleAddSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const idTavoloStr = formData.get('tavolo') as string;
+    
+    // Validazione base
+    if (!idTavoloStr || !availableTurnoId) {
+      alert("Seleziona un tavolo valido e assicurati che l'orario sia consentito.");
+      return;
+    }
+
+    // Costruiamo l'oggetto da inviare al server
+    const dataToSend = {
+      idRistorante,
+      idTurno: availableTurnoId,
+      dataPrenotazione: `${manualData} ${manualOra}`,
+      numeroPersone: manualPax,
+      idTavolo: parseInt(idTavoloStr, 10),
+      nomeCliente: formData.get('nome') as string,
+      // Il telefono è ora FACOLTATIVO: se è vuoto non lo mandiamo
+      telefono: formData.get('telefono') as string || undefined,
+    };
+
+    setLoadingId(-1); // Usiamo -1 per indicare un caricamento "generale" non legato a una riga
+    const res = await createManualReservation(dataToSend);
+    
+    if (res.success) {
+      setIsAddModalOpen(false);
+      // Resettiamo il form per le prossime volte
+      setManualData('');
+      setManualOra('');
+      setManualPax(2);
+      setFreeTables([]);
+    } else {
+      alert(res.error || "Errore durante la creazione della prenotazione.");
+    }
+    setLoadingId(null);
+  };
 
   // --- FUNZIONI DI SUPPORTO (Aprono i popup e riempiono i campi) ---
   const openEdit = (res: ReservationData) => {
@@ -120,16 +195,26 @@ export default function GestoreDashboardClient({
             </div>
           </div>
 
-          {/* Stampiamo i dati ricevuti dal Server (stats.attive e stats.noShows) */}
-          <div className="flex items-center bg-[#FDF1E9] px-6 py-3 rounded-2xl border border-[#F5CBA7]/50 divide-x divide-[#F5CBA7]/30">
-            <div className="pr-6 flex items-center gap-3">
-              <span className="text-2xl font-black text-[#781D2D]">{stats.attive}</span>
-              <span className="text-xs uppercase tracking-widest font-bold text-[#781D2D]/60">Attive</span>
+          {/* Stampiamo i dati ricevuti dal Server (stats.attive e stats.noShows) e il pulsante per aggiungere manualmente */}
+          <div className="flex flex-col md:flex-row items-center gap-4">
+            <div className="flex items-center bg-[#FDF1E9] px-6 py-3 rounded-2xl border border-[#F5CBA7]/50 divide-x divide-[#F5CBA7]/30">
+              <div className="pr-6 flex items-center gap-3">
+                <span className="text-2xl font-black text-[#781D2D]">{stats.attive}</span>
+                <span className="text-xs uppercase tracking-widest font-bold text-[#781D2D]/60">Attive</span>
+              </div>
+              <div className="pl-6 flex items-center gap-3">
+                <span className="text-2xl font-black text-[#E74C3C]">{stats.noShows}</span>
+                <span className="text-xs uppercase tracking-widest font-bold text-[#E74C3C]/60">No-Show</span>
+              </div>
             </div>
-            <div className="pl-6 flex items-center gap-3">
-              <span className="text-2xl font-black text-[#E74C3C]">{stats.noShows}</span>
-              <span className="text-xs uppercase tracking-widest font-bold text-[#E74C3C]/60">No-Show</span>
-            </div>
+            
+            <button 
+              onClick={() => setIsAddModalOpen(true)}
+              className="bg-[#D35400] text-white px-5 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-[#ba4a00] transition shadow-md whitespace-nowrap"
+            >
+              <Plus size={20} />
+              Nuova Prenotazione
+            </button>
           </div>
         </div>
 
@@ -306,6 +391,69 @@ export default function GestoreDashboardClient({
                 Conferma Assenza
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Aggiungi Nuova Prenotazione Modale */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl w-full max-w-lg p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            <button onClick={() => setIsAddModalOpen(false)} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-[#781D2D] bg-gray-50 hover:bg-[#FDF1E9] rounded-full transition-colors">
+              <X size={20} />
+            </button>
+            <h3 className="text-xl font-bold text-[#781D2D] mb-6 flex items-center gap-2">
+              <Plus className="text-[#D35400]" size={24} /> Inserimento Manuale
+            </h3>
+            
+              <form onSubmit={handleAddSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-600 mb-1">Nome Cliente</label>
+                  <input required name="nome" type="text" placeholder="Mario Rossi" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D35400] focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-600 mb-1">Telefono <span className="font-normal text-gray-400 text-xs">(Opzionale)</span></label>
+                  <input name="telefono" type="tel" placeholder="+39 333..." className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D35400] focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-600 mb-1">Numero Persone (Pax)</label>
+                  <input required name="pax" type="number" min="1" value={manualPax} onChange={e => setManualPax(Number(e.target.value))} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D35400] focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-600 mb-1">Data</label>
+                  <input required name="data" type="date" value={manualData} onChange={e => setManualData(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D35400] focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-600 mb-1">Ora</label>
+                  <input required name="ora" type="time" value={manualOra} onChange={e => setManualOra(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D35400] focus:outline-none" />
+                </div>
+                {/* MENU A TENDINA DINAMICO PER I TAVOLI */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-600 mb-1">Tavolo Disponibile</label>
+                  <select 
+                    required 
+                    name="tavolo" 
+                    disabled={freeTables.length === 0 || isSearchingTables} 
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D35400] focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
+                  >
+                    <option value="">
+                      {isSearchingTables ? "Ricerca in corso..." : (freeTables.length === 0 ? "Compila Data/Ora/Pax" : "Seleziona Tavolo")}
+                    </option>
+                    {freeTables.map(t => (
+                      <option key={t.idTavolo} value={t.idTavolo}>
+                        {t.nomeSala} - Tavolo {t.numero} ({t.posti} pax)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-[#F5CBA7]/20">
+                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-5 py-2.5 text-gray-500 font-medium hover:bg-gray-100 rounded-xl transition-colors">Annulla</button>
+                <button type="submit" className="px-5 py-2.5 bg-[#D35400] text-white font-bold rounded-xl hover:bg-[#ba4a00] transition-colors shadow-md">Salva Prenotazione</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

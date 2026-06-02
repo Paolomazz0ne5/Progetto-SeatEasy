@@ -3,16 +3,18 @@
 // appena vede roba interattiva o hook come useSearchParams.
 'use client';
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useState } from 'react';
 import Link from 'next/link';
 // Ci servono per leggere l'URL e i parametri (es: ?ristorante=1)
 import { usePathname, useSearchParams } from 'next/navigation';
-import { LayoutDashboard, Grid, Clock, MessageSquareHeart, User, LogOut, Image as ImageIcon } from 'lucide-react';
+import { LayoutDashboard, Grid, Clock, MessageSquareHeart, User, LogOut, Image as ImageIcon, Menu, X } from 'lucide-react';
 // Importiamo la funzione di backend per il logout (Server Action)
 import { logoutAction } from '@/app/actions/auth';
 import Logo from '@/components/Logo';
 
 function SidebarContent() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   // Leggiamo dove ci troviamo (pathname) e i parametri dell'URL
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -41,10 +43,45 @@ function SidebarContent() {
     { name: 'Relazioni Clienti', href: `/gestore/relazioni${qs}`, icon: MessageSquareHeart },
   ];
 
+  // Contenitore principale della sidebar: larghezza fissa, altezza minima tutto schermo,
+  // sfondo bianco e una leggera ombra per staccarla dal resto della pagina.
   return (
-    // Contenitore principale della sidebar: larghezza fissa, altezza minima tutto schermo,
-    // sfondo bianco e una leggera ombra per staccarla dal resto della pagina.
-    <div className="w-64 min-h-screen bg-white shadow-xl border-r border-[#F5CBA7]/40 flex flex-col z-50 relative">
+    <>
+      {/* --- MOBILE TOPBAR (Visibile solo su schermi piccoli) --- */}
+      <div className="lg:hidden flex items-center justify-between p-4 bg-white border-b border-[#F5CBA7]/40 z-40 shrink-0">
+        <Link href="/gestore/ristoranti" className="block">
+          <Logo className="scale-75 origin-left" />
+        </Link>
+        <button 
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="p-2 text-gray-600 hover:bg-gray-100 rounded-md"
+        >
+          <Menu size={24} />
+        </button>
+      </div>
+
+      {/* Sfondo scuro in overlay per chiudere il menu su mobile */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden" 
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      <div className={`
+        w-64 min-h-screen bg-white shadow-xl border-r border-[#F5CBA7]/40 flex flex-col z-50
+        fixed inset-y-0 left-0 transition-transform duration-300 ease-in-out
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+        lg:relative lg:translate-x-0
+      `}>
+        
+        {/* Bottone X per chiudere su mobile */}
+        <button 
+          onClick={() => setIsMobileMenuOpen(false)}
+          className="absolute top-4 right-4 p-2 text-gray-500 hover:bg-gray-100 rounded-md lg:hidden"
+        >
+          <X size={24} />
+        </button>
 
       {/* Brand Header: qui mostriamo il logo e la label di stato "Gestore Beta" */}
       <div className="p-6 pb-2 border-b border-[#F5CBA7]/30">
@@ -88,6 +125,7 @@ function SidebarContent() {
             <Link
               key={item.name}
               href={item.href}
+              onClick={() => setIsMobileMenuOpen(false)}
               // Tailwind dinamico: se è attivo uso il gradiente "SeatEasy style", altrimenti hover leggero.
               className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${isActive
                 ? 'bg-gradient-to-r from-[#781D2D] to-[#5f1723] text-white shadow-md transform scale-[1.02]'
@@ -108,6 +146,7 @@ function SidebarContent() {
         {/* Link diretto alla gestione profilo */}
         <Link
           href="/gestore/profilo"
+          onClick={() => setIsMobileMenuOpen(false)}
           className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all mb-2 ${pathname.startsWith('/gestore/profilo')
               ? 'bg-gray-200 text-gray-800 shadow-inner'
               : 'text-gray-500 hover:bg-white hover:shadow-sm'
@@ -127,6 +166,7 @@ function SidebarContent() {
         </button>
       </div>
     </div>
+    </>
   );
 }
 

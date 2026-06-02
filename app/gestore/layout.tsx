@@ -33,12 +33,12 @@ export default async function GestoreLayout({
   // If authenticated, render the globally authenticated dashboard layout
   // We use a flex container: Sidebar on the left, Main Content on the right.
   return (
-    <div className="flex min-h-screen bg-[#FFFDFB] font-sans overflow-hidden">
+    <div className="flex flex-col lg:flex-row min-h-screen bg-[#FFFDFB] font-sans overflow-hidden">
       {/* Persistent Left Navbar */}
       <GestoreSidebar />
 
       {/* Right Content Area - Scrolling individually ensures sidebar sticks */}
-      <main className="flex-1 overflow-y-auto relative h-screen">
+      <main className="flex-1 overflow-y-auto relative h-screen w-full">
         {children}
       </main>
     </div>

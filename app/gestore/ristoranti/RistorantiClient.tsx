@@ -330,8 +330,8 @@ function RistoranteModal({
 
 // ─── MODALE PER CREARE UN NUOVO RISTORANTE ────────────────────────────────────
 function AddRistoranteModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  // DOMANDA DA ESAME: useTransition serve per fare operazioni asincrone (chiamate al server) 
-  // senza bloccare la reattività di React. "isPending" ci dice se sta ancora caricando[cite: 4].
+  //useTransition serve per fare operazioni asincrone (chiamate al server) 
+  //senza bloccare la reattività di React. "isPending" ci dice se sta ancora caricando[cite: 4].
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
