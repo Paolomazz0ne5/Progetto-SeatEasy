@@ -131,7 +131,7 @@ export async function markNoShow(idPrenotazione: number, applyPenalty: boolean) 
  * Recupera i tavoli liberi per una specifica data e ora, utile per l'inserimento manuale.
  * Calcola l'idTurno corretto e verifica l'OccupazioneTavolo.
  */
-export async function getAvailableTablesForManual(idRistorante: number, date: string, time: string, pax: number) {
+export async function getAvailableTablesForManual(idRistorante: number, date: string, time: string, pax: number, excludeIdPrenotazione?: number) {
   const db = getDb();
   try {
     // Convertiamo "HH:MM" in minuti per trovare il turno corretto
@@ -170,21 +170,33 @@ export async function getAvailableTablesForManual(idRistorante: number, date: st
     const idTurno = turno.idTurno;
     const durataMedia = turno.durataMedia || 90;
 
-    // 2. Preleviamo tutti i tavoli (che hanno almeno i posti richiesti) e le loro sale
+    // 2. Preleviamo tutti i tavoli (che hanno almeno i posti richiesti, e non più di pax + 2 per evitare sprechi) e le loro sale
     const allTables = db.prepare(`
       SELECT T.idTavolo, T.numero, T.posti, S.nome as nomeSala
       FROM Tavolo T
       JOIN Sala S ON T.idSala = S.idSala
-      WHERE S.idRistorante = ? AND T.posti >= ? AND T.stato != 'Non Disponibile'
-    `).all(idRistorante, pax) as any[];
+      WHERE S.idRistorante = ? 
+        AND T.posti >= ? 
+        AND T.posti <= ?
+        AND T.stato != 'Non Disponibile'
+      ORDER BY T.posti ASC
+    `).all(idRistorante, pax, pax + 2) as any[];
 
-    // 3. Preleviamo le prenotazioni per quel giorno
-    const reservations = db.prepare(`
+    // 3. Preleviamo le prenotazioni per quel giorno, escludendo (se fornito) l'id della prenotazione corrente
+    let queryStr = `
       SELECT OT.idTavolo, P.dataPrenotazione
       FROM OccupazioneTavolo OT
       JOIN Prenotazione P ON OT.idPrenotazione = P.idPrenotazione
       WHERE P.idTurno = ? AND P.dataPrenotazione LIKE ? AND P.stato != 'Annullata'
-    `).all(idTurno, `${date}%`) as { idTavolo: number, dataPrenotazione: string }[];
+    `;
+    let queryParams: any[] = [idTurno, `${date}%`];
+
+    if (excludeIdPrenotazione) {
+      queryStr += ` AND P.idPrenotazione != ?`;
+      queryParams.push(excludeIdPrenotazione);
+    }
+
+    const reservations = db.prepare(queryStr).all(...queryParams) as { idTavolo: number, dataPrenotazione: string }[];
 
     const occupiedIds = new Set<number>();
     const reqStart = reqMinutes;
@@ -238,8 +250,12 @@ export async function createManualReservation(data: {
       // Generiamo una email random per superare il vincolo UNIQUE NOT NULL.
       const fakeEmail = `manual_${Date.now()}_${Math.floor(Math.random() * 1000)}@seateasy.local`;
       
+      // [Nuova Logica]: Cifriamo anche la password dummy generata automaticamente
+      const bcrypt = require('bcryptjs');
+      const hashedManualPassword = bcrypt.hashSync('manual_password', 10);
+      
       const insertAccount = db.prepare('INSERT INTO Account (email, password, nome, cognome, telefono) VALUES (?, ?, ?, ?, ?)');
-      const resAccount = insertAccount.run(fakeEmail, 'manual_password', data.nomeCliente, '(Manuale)', data.telefono || null);
+      const resAccount = insertAccount.run(fakeEmail, hashedManualPassword, data.nomeCliente, '(Manuale)', data.telefono || null);
       const idCliente = resAccount.lastInsertRowid;
 
       const insertCliente = db.prepare('INSERT INTO Cliente (idAccount) VALUES (?)');

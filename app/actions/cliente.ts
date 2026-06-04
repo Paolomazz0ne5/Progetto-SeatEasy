@@ -195,16 +195,25 @@ export async function updateReservation(idPrenotazione: number, data: {
   numeroPersone: number,
   noteCliente?: string,
   idTurno?: number,
-  dataPrenotazione?: string
+  dataPrenotazione?: string,
+  idTavolo?: number
 }) {
   const db = getDb();
   try {
-    db.prepare(`
-      UPDATE Prenotazione
-      SET numeroPersone = ?, noteCliente = ?, idTurno = COALESCE(?, idTurno), dataPrenotazione = COALESCE(?, dataPrenotazione)
-      WHERE idPrenotazione = ?
-    `).run(data.numeroPersone, data.noteCliente || null, data.idTurno || null, data.dataPrenotazione || null, idPrenotazione);
+    const transaction = db.transaction(() => {
+      db.prepare(`
+        UPDATE Prenotazione
+        SET numeroPersone = ?, noteCliente = ?, idTurno = COALESCE(?, idTurno), dataPrenotazione = COALESCE(?, dataPrenotazione)
+        WHERE idPrenotazione = ?
+      `).run(data.numeroPersone, data.noteCliente || null, data.idTurno || null, data.dataPrenotazione || null, idPrenotazione);
 
+      if (data.idTavolo) {
+        db.prepare('DELETE FROM OccupazioneTavolo WHERE idPrenotazione = ?').run(idPrenotazione);
+        db.prepare('INSERT INTO OccupazioneTavolo (idTavolo, idPrenotazione) VALUES (?, ?)').run(data.idTavolo, idPrenotazione);
+      }
+    });
+
+    transaction();
     revalidatePath('/cliente/prenotazioni');
     return { success: true };
   } catch {
