@@ -4,6 +4,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import bcrypt from 'bcryptjs';
 
 // Helper di connessione al database
 function getDb() {
@@ -24,10 +25,20 @@ export async function loginAction(formData: FormData) {
   const db = getDb();
   try {
     // 1. Cerco l'utente nella tabella base 'Account'
-    const user = db.prepare('SELECT * FROM Account WHERE email = ? AND password = ?').get(email, password) as { idAccount: number } | undefined;
+    // [Nuova Logica]: Estraiamo i dati utente in base all'email per verificare successivamente
+    // la password tramite confronto di hash, senza salvare la password in chiaro.
+    const user = db.prepare('SELECT * FROM Account WHERE email = ?').get(email) as { idAccount: number, password: string } | undefined;
 
     if (!user) {
-      return { success: false, error: 'Credenziali non valide o utente inesistente.' };
+      // Restituiamo un messaggio generico in caso di utente non trovato per non fornire indizi agli attaccanti.
+      return { success: false, error: 'Credenziali non valide' };
+    }
+
+    // [Nuova Logica]: Verifichiamo che la password immessa corrisponda all'hash nel database.
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      // Restituiamo lo stesso messaggio generico per sicurezza.
+      return { success: false, error: 'Credenziali non valide' };
     }
 
     // 2. Controllo di Autorizzazione (RBAC - Role Based Access Control)
@@ -83,9 +94,13 @@ export async function registerAction(formData: FormData) {
       return { success: false, error: 'Email già registrata nel sistema.' };
     }
 
+    // [Nuova Logica]: Cifriamo la password dell'utente prima di salvarla nel database.
+    // Utilizziamo bcrypt con 10 salt rounds per un equilibrio ottimale tra sicurezza e performance.
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     // Transazione per garantire che l'account e il ruolo vengano creati insieme
     const transaction = db.transaction(() => {
-      const res = db.prepare('INSERT INTO Account (email, password, nome, cognome, telefono) VALUES (?, ?, ?, ?, ?)').run(email, password, nome, cognome, telefono);
+      const res = db.prepare('INSERT INTO Account (email, password, nome, cognome, telefono) VALUES (?, ?, ?, ?, ?)').run(email, hashedPassword, nome, cognome, telefono);
       const newId = res.lastInsertRowid;
 
       // Inserimento nella tabella specifica del ruolo

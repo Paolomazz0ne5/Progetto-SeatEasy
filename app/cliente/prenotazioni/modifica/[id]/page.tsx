@@ -47,7 +47,7 @@ export default async function ModificaPrenotazionePage({ params }: { params: Pro
   // 2. QUERY DI CONTESTO: Recupera l'elenco di tutti i turni orari configurati per quel determinato ristorante
   // Serve per popolare la tendina di selezione (Select) permettendo all'utente di cambiare l'orario della cena/pranzo
   const turni = db.prepare(`
-    SELECT T.idTurno, O.nome AS nomeTurno, O.oraInizio
+    SELECT T.idTurno, O.nome AS nomeTurno, O.oraInizio, O.oraFine
     FROM Turno T
     JOIN Orario O ON T.idOrario = O.idOrario
     WHERE O.idRistorante = ?
