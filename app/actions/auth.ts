@@ -5,28 +5,33 @@ import path from 'path';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+// Helper di connessione al database
 function getDb() {
   const dbPath = path.resolve(process.cwd(), 'database.db');
   return new Database(dbPath);
 }
 
+// [LOGIN]: Verifica le credenziali e imposta il cookie di sessione.
 export async function loginAction(formData: FormData) {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
-  const role = formData.get('role') as string; // 'cliente' or 'gestore'
-  
+  const role = formData.get('role') as string; // 'cliente' o 'gestore'
+
   if (!email || !password) {
     return { success: false, error: 'Compila tutti i campi' };
   }
 
   const db = getDb();
   try {
+    // 1. Cerco l'utente nella tabella base 'Account'
     const user = db.prepare('SELECT * FROM Account WHERE email = ? AND password = ?').get(email, password) as { idAccount: number } | undefined;
-    
+
     if (!user) {
       return { success: false, error: 'Credenziali non valide o utente inesistente.' };
     }
 
+    // 2. Controllo di Autorizzazione (RBAC - Role Based Access Control)
+    // Verifico che l'utente esista nella tabella specifica del ruolo scelto
     if (role === 'gestore') {
       const gestore = db.prepare('SELECT idAccount FROM GestoreRistorante WHERE idAccount = ?').get(user.idAccount);
       if (!gestore) {
@@ -39,15 +44,16 @@ export async function loginAction(formData: FormData) {
       }
     }
 
+    // 3. Imposto il Cookie di sessione. 
+    // httpOnly: true è fondamentale per evitare attacchi XSS.
     const cookieStore = await cookies();
-    cookieStore.set('seateasy_session', String(user.idAccount), { 
+    cookieStore.set('seateasy_session', String(user.idAccount), {
       path: '/',
       httpOnly: true,
-      maxAge: 86400 * 7
+      maxAge: 86400 * 7 // Sessione valida per 7 giorni
     });
 
     return { success: true, role };
-
   } catch (error) {
     console.error(error);
     return { success: false, error: 'Errore interno del server.' };
@@ -56,6 +62,7 @@ export async function loginAction(formData: FormData) {
   }
 }
 
+// [REGISTRAZIONE]: Crea un nuovo utente e lo collega alla tabella del ruolo.
 export async function registerAction(formData: FormData) {
   const nome = formData.get('nome') as string;
   const cognome = formData.get('cognome') as string;
@@ -70,35 +77,37 @@ export async function registerAction(formData: FormData) {
 
   const db = getDb();
   try {
+    // Controllo se l'email è già in uso
     const existing = db.prepare('SELECT idAccount FROM Account WHERE email = ?').get(email);
     if (existing) {
       return { success: false, error: 'Email già registrata nel sistema.' };
     }
 
+    // Transazione per garantire che l'account e il ruolo vengano creati insieme
     const transaction = db.transaction(() => {
       const res = db.prepare('INSERT INTO Account (email, password, nome, cognome, telefono) VALUES (?, ?, ?, ?, ?)').run(email, password, nome, cognome, telefono);
       const newId = res.lastInsertRowid;
-      
+
+      // Inserimento nella tabella specifica del ruolo
       if (role === 'gestore') {
         db.prepare('INSERT INTO GestoreRistorante (idAccount) VALUES (?)').run(newId);
       } else {
         db.prepare('INSERT INTO Cliente (idAccount) VALUES (?)').run(newId);
       }
-      
       return newId;
     });
 
     const newAccountId = transaction();
 
+    // Login automatico post-registrazione
     const cookieStore = await cookies();
-    cookieStore.set('seateasy_session', String(newAccountId), { 
+    cookieStore.set('seateasy_session', String(newAccountId), {
       path: '/',
       httpOnly: true,
       maxAge: 86400 * 7
     });
 
     return { success: true, role };
-
   } catch (error: unknown) {
     console.error(error);
     return { success: false, error: 'Errore inaspettato durante la registrazione.' };
@@ -107,14 +116,14 @@ export async function registerAction(formData: FormData) {
   }
 }
 
-
+// [LOGOUT]: Distrugge la sessione corrente.
 export async function logoutAction() {
   const cookieStore = await cookies();
   cookieStore.delete('seateasy_session');
   redirect('/auth');
 }
 
-
+// [SICUREZZA EXTRA]: PIN per accedere a funzioni sensibili del ristorante.
 export async function verifyRestaurantPinAction(idRistorante: number, pin: string) {
   const cookieStore = await cookies();
   const session = cookieStore.get('seateasy_session');
@@ -124,10 +133,10 @@ export async function verifyRestaurantPinAction(idRistorante: number, pin: strin
   const db = getDb();
   try {
     const ristorante = db.prepare('SELECT pin FROM Ristorante WHERE idRistorante = ? AND idGestoreRistorante = ?').get(idRistorante, idAccount) as { pin: string | null } | undefined;
-    
+
     if (!ristorante) return { success: false, error: 'Ristorante non trovato' };
-    
-    // Se non ha impostato un PIN per il ristorante, la verifica passa (o gestiamo a monte)
+
+    // Verifica PIN (se impostato)
     if (ristorante.pin === null || ristorante.pin === '') {
       return { success: true };
     }
@@ -144,4 +153,3 @@ export async function verifyRestaurantPinAction(idRistorante: number, pin: strin
     db.close();
   }
 }
-

@@ -1,3 +1,12 @@
+/**
+ * DESCRIZIONE PRELIMINARE:
+ * Il componente `TableMap` è il cuore interattivo della prenotazione lato cliente.
+ * Genera una mappa visiva e reattiva dei tavoli in base a data e turno scelti.
+ * Gestisce regole di business complesse (capacità minima/massima, prevenzione 
+ * overbooking) bloccando selezioni non valide. Calcola la disponibilità 
+ * interrogando il server in tempo reale e gestisce il checkout finale,
+ * includendo anche la simulazione di un eventuale pagamento di caparra.
+ */
 "use client";
 //import di librerie React e Next.js
 import React, { useState, useEffect } from 'react';

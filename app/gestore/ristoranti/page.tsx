@@ -1,3 +1,14 @@
+
+/**
+ * DESCRIZIONE PRELIMINARE:
+ * La `MieiRistorantiPage` è la vista dedicata alla gestione dell'inventario
+ * del ristoratore. Funge da contenitore (parent) per il componente `RistorantiClient`,
+ * che contiene tutta la logica di interazione (CRUD dei ristoranti). Questo file
+ * ha il ruolo di "guardiano": intercetta l'accesso alla pagina, controlla
+ * l'autenticazione tramite cookie e recupera i dati grezzi dal database tramite
+ * `getMyRistoranti` per poi passarli al componente figlio. Garantisce anche l'integrità
+ * visiva tramite elementi decorativi di sfondo.
+ */
 import { getMyRistoranti } from '@/app/actions/ristoranti';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
