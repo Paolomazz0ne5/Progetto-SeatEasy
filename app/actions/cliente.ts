@@ -141,7 +141,7 @@ export async function createReservation(data: {
       const res = db.prepare(`
         INSERT INTO Prenotazione (idCliente, idTurno, dataPrenotazione, numeroPersone, stato, noteCliente, caparraPagata)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(idCliente, data.idTurno, data.dataPrenotazione, data.numeroPersone, 'Confermata', data.noteCliente || null, caparraEffettiva);
+      `).run(idCliente, data.idTurno, data.dataPrenotazione, data.numeroPersone, 'In Attesa', data.noteCliente || null, caparraEffettiva);
 
       const idPrenotazione = res.lastInsertRowid;
 

@@ -105,7 +105,7 @@ db.exec(`
       idTurno INTEGER NOT NULL,
       dataPrenotazione TEXT NOT NULL,
       numeroPersone INTEGER NOT NULL,
-      stato TEXT NOT NULL,
+      stato TEXT NOT NULL DEFAULT 'In Attesa',
       noteCliente TEXT,
       caparraPagata REAL DEFAULT 0,
       dataCreazione TEXT DEFAULT CURRENT_TIMESTAMP,
