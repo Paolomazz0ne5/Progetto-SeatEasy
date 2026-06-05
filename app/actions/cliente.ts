@@ -14,7 +14,12 @@ function getDb() {
 export async function getRestaurants(pax: number = 1) {
   const db = getDb();
   try {
-    const ristoranti = db.prepare('SELECT * FROM Ristorante').all() as any[];
+    const ristoranti = db.prepare(`
+      SELECT R.*, 
+             (SELECT AVG(punteggio) FROM Recensione WHERE idRistorante = R.idRistorante) as mediaRecensioni,
+             (SELECT COUNT(*) FROM Recensione WHERE idRistorante = R.idRistorante) as numeroRecensioni
+      FROM Ristorante R
+    `).all() as any[];
     // Per ogni ristorante, verifichiamo se c'è disponibilità (somma totale posti >= pax)
     for (const r of ristoranti) {
       const capacita = db.prepare(`
