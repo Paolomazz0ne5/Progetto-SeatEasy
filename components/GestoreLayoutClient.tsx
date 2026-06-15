@@ -33,7 +33,7 @@ type Sala = {
 
 export default function GestoreLayoutClient({ initialSale, idRistorante }: { initialSale: Sala[], idRistorante: number }) {
   // --- LE MIE VARIABILI DI STATO (la "memoria" della pagina) ---
-  const [sale] = useState<Sala[]>(initialSale); // Salvo le sale che mi arrivano all'inizio
+  const sale = initialSale; // Salvo le sale che mi arrivano all'inizio
 
   // Scelgo la prima sala di default da mostrare a schermo, se ce n'è almeno una
   const [activeSalaId, setActiveSalaId] = useState<number | null>(initialSale.length > 0 ? initialSale[0].idSala : null);
@@ -69,7 +69,9 @@ export default function GestoreLayoutClient({ initialSale, idRistorante }: { ini
     if (!newSalaName.trim()) return; // Se il nome è vuoto o solo spazi, mi blocco e non faccio niente
     setLoading(true); // Blocco i bottoni
     await createSala(newSalaName, idRistorante); // Chiamo il server per crearla
-    window.location.reload(); // Ricarico brutalmente la pagina per vedere le modifiche
+    setNewSalaModal(false);
+    setNewSalaName('');
+    setLoading(false);
   };
 
   // Funzione per cancellare una sala
@@ -79,7 +81,8 @@ export default function GestoreLayoutClient({ initialSale, idRistorante }: { ini
     if (confirm(`Sei sicuro di voler eliminare la sala "${activeSala.nome}" e tutti i suoi tavoli?`)) {
       setLoading(true);
       await deleteSala(activeSala.idSala); // Cancello dal server
-      window.location.reload(); // Ricarico la pagina
+      setActiveSalaId(null);
+      setLoading(false);
     }
   };
 
@@ -122,7 +125,8 @@ export default function GestoreLayoutClient({ initialSale, idRistorante }: { ini
       await updateTavolo(idTavolo, Number(numero), Number(posti), postiMin); //await per l'aggiornamento
     }
 
-    window.location.reload(); // Ricarico la pagina
+    setTavoloModal({ isOpen: false, mode: 'create', data: null });
+    setLoading(false);
   };
 
   // Elimina il singolo tavolo
@@ -130,7 +134,8 @@ export default function GestoreLayoutClient({ initialSale, idRistorante }: { ini
     if (!tavoloModal.data?.idTavolo) return; // Controllo di sicurezza per eliminare il tavolo
     setLoading(true); // Attendo che il server elimini il tavolo
     await deleteTavolo(tavoloModal.data.idTavolo); // Chiamo l'azione del server per eliminare
-    window.location.reload(); // Ricarico la pagina per vedere le modifiche
+    setTavoloModal({ isOpen: false, mode: 'create', data: null });
+    setLoading(false);
   };
 
   // Cosa succede quando faccio click proprio sopra al quadratino/tondino di un tavolo?
@@ -159,7 +164,7 @@ export default function GestoreLayoutClient({ initialSale, idRistorante }: { ini
     await linkTavoli(selectedTavoliIds); // Mando l'array degli ID al server
     setIsLinkMode(false); // Esco dalla modalità unione
     setSelectedTavoliIds([]); // Svuoto il carrello delle selezioni
-    window.location.reload();
+    setLoading(false);
   };
 
   // Stacca un tavolo dal suo gruppo
@@ -167,7 +172,7 @@ export default function GestoreLayoutClient({ initialSale, idRistorante }: { ini
     setLoading(true);
     await unlinkTavolo(idTavolo);
     setTavoloModal({ isOpen: false, mode: 'create', data: null }); // Chiudo il pop-up
-    window.location.reload();
+    setLoading(false);
   };
 
   // ============================================================================

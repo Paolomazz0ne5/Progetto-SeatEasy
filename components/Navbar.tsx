@@ -1,8 +1,8 @@
+
 // Diciamo a Next.js che questo è un Client Component.
 // È necessario perché usiamo gli Hook (useState, useEffect) 
 // e gestiamo l'evento onClick del bottone di logout.
 "use client";
-
 import Link from "next/link";
 import React, { useState, useEffect } from "react";
 import Logo from "@/components/Logo";

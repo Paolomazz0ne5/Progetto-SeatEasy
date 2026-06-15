@@ -339,6 +339,7 @@ export default function GestoreDashboardClient({
                   <option value="Confermata">Confermata</option>
                   <option value="In Attesa">In Attesa</option>
                   <option value="Annullata">Annullata</option>
+                  <option value="noShow">No-Show</option>
                 </select>
               </div>
             </div>

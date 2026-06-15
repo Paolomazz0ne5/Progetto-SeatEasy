@@ -4,14 +4,35 @@ import Link from 'next/link';
 import { ArrowLeft, MessageSquareHeart } from 'lucide-react';
 import GestoreRelazioniClient, { Review } from '@/components/GestoreRelazioniClient';
 import { ensureCRMDatabase } from '@/app/actions/relazioni';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-export default async function GestoreRelazioniPage() {
+export default async function GestoreRelazioniPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ristorante?: string }>;
+}) {
+  const cookieStore = await cookies();
+  const sessionId = cookieStore.get('seateasy_session')?.value;
+  if (!sessionId) redirect('/auth');
+
+  const params = await searchParams;
+  const ristoranteId = params.ristorante ? parseInt(params.ristorante, 10) : NaN;
+  if (isNaN(ristoranteId)) redirect('/gestore/ristoranti');
+
   await ensureCRMDatabase();
 
   const dbPath = path.resolve(process.cwd(), 'database.db');
   const db = new Database(dbPath);
+
+  // Controllo di ownership
+  const ownership = db.prepare('SELECT idRistorante FROM Ristorante WHERE idRistorante = ? AND idGestoreRistorante = ?').get(ristoranteId, Number(sessionId));
+  if (!ownership) {
+    db.close();
+    redirect('/gestore/ristoranti');
+  }
 
   // FETCH REVIEWS
   const reviews = db.prepare(`
@@ -25,8 +46,9 @@ export default async function GestoreRelazioniPage() {
     FROM Recensione R
     JOIN Cliente C ON R.idCliente = C.idAccount
     JOIN Account A ON C.idAccount = A.idAccount
+    WHERE R.idRistorante = ?
     ORDER BY R.dataCreazione DESC
-  `).all() as Review[];
+  `).all(ristoranteId) as Review[];
 
   db.close();
 

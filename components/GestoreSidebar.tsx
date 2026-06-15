@@ -94,7 +94,7 @@ function SidebarContent() {
       </div>
 
       {/* Navigazione Principale: qui mappo l'array 'navItems' per generare i link */}
-      <nav className="flex-1 px-4 py-6 space-y-2">
+      <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
         <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 ml-2">Menu Principale</span>
 
         {navItems.map(item => {

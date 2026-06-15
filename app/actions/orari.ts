@@ -62,9 +62,9 @@ export async function createOrario(idRistorante: number, nome: string, oraInizio
 
     // Creo il turno collegato (One-to-One logico)
     db.prepare(`
-      INSERT INTO Turno (idOrario, durataMedia)
-      VALUES (?, ?)
-    `).run(info.lastInsertRowid, durataMedia);
+      INSERT INTO Turno (idOrario, nomeTurno, durataMedia)
+      VALUES (?, ?, ?)
+    `).run(info.lastInsertRowid, nome, durataMedia);
 
     revalidatePath('/gestore/orari');
     return { success: true };
@@ -125,13 +125,13 @@ export async function deleteOrario(idOrario: number) {
 }
 
 // [GESTIONE TURNI]: Funzioni semplici per creare/modificare/eliminare i turni.
-export async function createTurno(idOrario: number, durataMedia: number) {
+export async function createTurno(idOrario: number, nomeTurno: string, durataMedia: number) {
   const db = getDb();
   try {
     db.prepare(`
-      INSERT INTO Turno (idOrario, durataMedia)
-      VALUES (?, ?)
-    `).run(idOrario, durataMedia);
+      INSERT INTO Turno (idOrario, nomeTurno, durataMedia)
+      VALUES (?, ?, ?)
+    `).run(idOrario, nomeTurno, durataMedia);
 
     revalidatePath('/gestore/orari');
     return { success: true };

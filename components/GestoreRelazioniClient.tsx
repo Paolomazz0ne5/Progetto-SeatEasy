@@ -203,8 +203,8 @@ export default function GestoreRelazioniClient({
             </div>
           </div>
 
-          {/* LISTA DELLE RECENSIONI SCORREVOLE (Scrollbar) */}
-          <div className="space-y-6 overflow-y-auto max-h-[600px] pr-2 custom-scrollbar">
+          {/* LISTA DELLE RECENSIONI SCORREVOLE */}
+          <div className="space-y-6">
 
             {/* Se l'array delle recensioni è vuoto, stampo un messaggio */}
             {reviews.length === 0 ? (
