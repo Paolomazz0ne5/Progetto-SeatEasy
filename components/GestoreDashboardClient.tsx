@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Trash2, Edit, AlertTriangle, UserX, X, CheckCircle, ShieldAlert, Plus } from 'lucide-react';
+import { Trash2, Edit, AlertTriangle, UserX, X, CheckCircle, ShieldAlert, Plus, ChevronUp, ChevronDown } from 'lucide-react';
 // Importiamo le nostre Server Actions (il backend) per modificare il database
 import { deleteReservation, updateReservation, markNoShow, getAvailableTablesForManual, createManualReservation } from '@/app/actions/gestore';
 
@@ -57,6 +57,25 @@ export default function GestoreDashboardClient({
   const [noShowPenalty, setNoShowPenalty] = useState(false);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [hoverToast, setHoverToast] = useState<string | null>(null);
+
+  // --- STATI PER L'ORDINAMENTO DELLA TABELLA ---
+  type SortField = 'cliente' | 'data' | 'persone' | 'stato';
+  const [sortField, setSortField] = useState<SortField>('data');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  const handleSort = (field: SortField) => {
+    setSortOrder(sortField === field && sortOrder === 'asc' ? 'desc' : 'asc');
+    setSortField(field);
+  };
+
+  const getSortedReservations = () => {
+    return [...reservations].sort((a, b) => {
+      const getVal = (r: ReservationData) => sortField === 'cliente' ? `${r.clienteNome} ${r.clienteCognome}`.toLowerCase() : sortField === 'data' ? new Date(r.dataPrenotazione).getTime() : sortField === 'persone' ? r.numeroPersone : r.stato.toLowerCase();
+      const valA = getVal(a), valB = getVal(b);
+      return (valA < valB ? -1 : valA > valB ? 1 : 0) * (sortOrder === 'asc' ? 1 : -1);
+    });
+  };
 
   // --- STATI PER LA PRENOTAZIONE MANUALE ---
   // Memorizziamo i valori mentre l'utente digita per poter interrogare il DB sui tavoli liberi
@@ -75,7 +94,7 @@ export default function GestoreDashboardClient({
       if (manualData && manualOra && manualPax > 0) {
         setIsSearchingTables(true);
         const res = await getAvailableTablesForManual(idRistorante, manualData, manualOra, manualPax);
-        
+
         if (res.success && res.freeTables) {
           setFreeTables(res.freeTables);
           setAvailableTurnoId(res.idTurno || null);
@@ -94,7 +113,7 @@ export default function GestoreDashboardClient({
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const idTavoloStr = formData.get('tavolo') as string;
-    
+
     // Validazione base
     if (!idTavoloStr || !availableTurnoId) {
       alert("Seleziona un tavolo valido e assicurati che l'orario sia consentito.");
@@ -115,7 +134,7 @@ export default function GestoreDashboardClient({
 
     setLoadingId(-1); // Usiamo -1 per indicare un caricamento "generale" non legato a una riga
     const res = await createManualReservation(dataToSend);
-    
+
     if (res.success) {
       setIsAddModalOpen(false);
       // Resettiamo il form per le prossime volte
@@ -179,6 +198,15 @@ export default function GestoreDashboardClient({
 
   return (
     <div className="w-full flex text-[#781D2D]">
+      
+      {/* Toast Fluttuante per No-Show (al passaggio del mouse) */}
+      {hoverToast && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 bg-red-600/95 backdrop-blur-sm text-white px-6 py-3.5 rounded-2xl shadow-2xl animate-in fade-in slide-in-from-bottom-6 duration-200 text-sm font-bold border border-red-500/50">
+          <AlertTriangle size={18} />
+          {hoverToast}
+        </div>
+      )}
+
       <div className="flex-1 bg-[#FFFDFB]/60 backdrop-blur-sm rounded-3xl border border-[#F5CBA7]/30 shadow-sm overflow-hidden relative">
 
         {/* --- INTESTAZIONE E STATISTICHE --- */}
@@ -207,8 +235,8 @@ export default function GestoreDashboardClient({
                 <span className="text-xs uppercase tracking-widest font-bold text-[#E74C3C]/60">No-Show</span>
               </div>
             </div>
-            
-            <button 
+
+            <button
               onClick={() => setIsAddModalOpen(true)}
               className="bg-[#D35400] text-white px-5 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-[#ba4a00] transition shadow-md whitespace-nowrap"
             >
@@ -223,10 +251,18 @@ export default function GestoreDashboardClient({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#FDF1E9]/30 text-[#781D2D] font-bold text-sm uppercase tracking-wider">
-                <th className="p-5 border-b border-[#F5CBA7]/20">Cliente</th>
-                <th className="p-5 border-b border-[#F5CBA7]/20">Data</th>
-                <th className="p-5 border-b border-[#F5CBA7]/20">Persone</th>
-                <th className="p-5 border-b border-[#F5CBA7]/20">Stato</th>
+                <th className="p-5 border-b border-[#F5CBA7]/20 cursor-pointer hover:bg-[#FDF1E9]/50 transition-colors select-none" onClick={() => handleSort('cliente')}>
+                  <div className="flex items-center gap-2">Cliente {sortField === 'cliente' && (sortOrder === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}</div>
+                </th>
+                <th className="p-5 border-b border-[#F5CBA7]/20 cursor-pointer hover:bg-[#FDF1E9]/50 transition-colors select-none" onClick={() => handleSort('data')}>
+                  <div className="flex items-center gap-2">Data {sortField === 'data' && (sortOrder === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}</div>
+                </th>
+                <th className="p-5 border-b border-[#F5CBA7]/20 cursor-pointer hover:bg-[#FDF1E9]/50 transition-colors select-none" onClick={() => handleSort('persone')}>
+                  <div className="flex items-center gap-2">Persone {sortField === 'persone' && (sortOrder === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}</div>
+                </th>
+                <th className="p-5 border-b border-[#F5CBA7]/20 cursor-pointer hover:bg-[#FDF1E9]/50 transition-colors select-none" onClick={() => handleSort('stato')}>
+                  <div className="flex items-center gap-2">Stato {sortField === 'stato' && (sortOrder === 'asc' ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}</div>
+                </th>
                 <th className="p-5 border-b border-[#F5CBA7]/20">Info</th>
                 <th className="p-5 border-b border-[#F5CBA7]/20 text-right">Azioni</th>
               </tr>
@@ -238,7 +274,7 @@ export default function GestoreDashboardClient({
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-gray-500 font-medium">Nessuna prenotazione attiva trovata.</td>
                 </tr>
-              ) : reservations.map((res) => {
+              ) : getSortedReservations().map((res) => {
 
                 // Variabile per capire se QUESTA specifica riga sta caricando
                 const isLoading = loadingId === res.idPrenotazione;
@@ -250,7 +286,18 @@ export default function GestoreDashboardClient({
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="font-bold text-[#781D2D] text-base group">
-                          {res.clienteNome} {res.clienteCognome}
+                          <div className="flex items-center gap-2">
+                            <span>{res.clienteNome} {res.clienteCognome}</span>
+                            {res.noShowCount > 1 && (
+                              <div 
+                                className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-[11px] font-black shadow-sm cursor-help hover:scale-110 transition-transform"
+                                onMouseEnter={() => setHoverToast(`Questo cliente non si è presentato per ${res.noShowCount} volte!`)}
+                                onMouseLeave={() => setHoverToast(null)}
+                              >
+                                !
+                              </div>
+                            )}
+                          </div>
                           <div className="text-xs text-gray-400 font-normal">{res.telefono}</div>
                         </div>
                       </div>
@@ -269,9 +316,9 @@ export default function GestoreDashboardClient({
                       </span>
                     </td>
 
-                    <td className="p-4 text-xs text-gray-500 max-w-[150px] truncate" title={res.noteCliente}>
+                    <td className="p-4 text-sm font-bold text-[#781D2D] max-w-[150px] truncate" title={res.noteCliente}>
                       {res.noteCliente || '-'}
-                      {res.caparraPagata > 0 && <div className="text-green-600 font-medium flex items-center gap-1 mt-1"><span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Caparra: €{res.caparraPagata}</div>}
+                      {res.caparraPagata > 0 && <div className="text-green-600 font-bold text-xs flex items-center gap-1 mt-1"><span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Caparra: €{res.caparraPagata}</div>}
                     </td>
 
                     {/* BOTTONI DELLE AZIONI */}
@@ -406,8 +453,8 @@ export default function GestoreDashboardClient({
             <h3 className="text-xl font-bold text-[#781D2D] mb-6 flex items-center gap-2">
               <Plus className="text-[#D35400]" size={24} /> Inserimento Manuale
             </h3>
-            
-              <form onSubmit={handleAddSubmit} className="space-y-4">
+
+            <form onSubmit={handleAddSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-600 mb-1">Nome Cliente</label>
@@ -432,10 +479,10 @@ export default function GestoreDashboardClient({
                 {/* MENU A TENDINA DINAMICO PER I TAVOLI */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-600 mb-1">Tavolo Disponibile</label>
-                  <select 
-                    required 
-                    name="tavolo" 
-                    disabled={freeTables.length === 0 || isSearchingTables} 
+                  <select
+                    required
+                    name="tavolo"
+                    disabled={freeTables.length === 0 || isSearchingTables}
                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#D35400] focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
                   >
                     <option value="">
@@ -449,7 +496,7 @@ export default function GestoreDashboardClient({
                   </select>
                 </div>
               </div>
-              
+
               <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-[#F5CBA7]/20">
                 <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-5 py-2.5 text-gray-500 font-medium hover:bg-gray-100 rounded-xl transition-colors">Annulla</button>
                 <button type="submit" className="px-5 py-2.5 bg-[#D35400] text-white font-bold rounded-xl hover:bg-[#ba4a00] transition-colors shadow-md">Salva Prenotazione</button>

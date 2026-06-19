@@ -11,7 +11,7 @@ function getDb() {
   const dbPath = path.resolve(process.cwd(), 'database.db');
   return new Database(dbPath);
 }
-
+// Definizione dell'interfaccia Ristorante per garantire la coerenza dei tipi
 export type Ristorante = {
   idRistorante: number;
   nome: string;
@@ -25,7 +25,8 @@ export type Ristorante = {
   tipologia: string | null;
   foto_url: string | null;
 };
-
+// Assicura che la tabella Ristorante abbia tutte le colonne necessarie. 
+// Aggiunge colonne mancanti per retrocompatibilità
 export async function ensureRistoranteColumns() {
   const db = getDb();
   try {
@@ -56,7 +57,8 @@ export async function ensureRistoranteColumns() {
     db.close();
   }
 }
-
+// Crea la tabella GalleriaRistorante se non esiste.
+// Utilizza FK CASCADE per garantire la pulizia automatica dei dati correlati.
 export async function ensureGalleriaTable() {
   const db = getDb();
   try {
@@ -74,28 +76,35 @@ export async function ensureGalleriaTable() {
     console.error("Error creating GalleriaRistorante table:", err);
   } finally {
     db.close();
-  }
+  }   
 }
-
+// Recupera i ristoranti associati al gestore autenticato.
+// Include i dettagli del gestore (email, nome) tramite join per l'interfaccia admin.
 export async function getMyRistoranti(): Promise<{ success: boolean; data?: Ristorante[]; error?: string }> {
+  // Recupera i cookie dal browser dell'utente per identificare la sessione corrente
   const cookieStore = await cookies();
-  const sessionId = cookieStore.get('seateasy_session')?.value;
+  // Preleva l'ID del gestore (sessione) dal cookie 'seateasy_session'
+  const sessionId = cookieStore.get('seateasy_session')?.value; 
 
+  // Se non c'è una sessione valida, impedisce l'accesso ai dati del ristorante
   if (!sessionId) {
     return { success: false, error: 'Non autenticato.' };
   }
 
+  // Assicura che la tabella sia aggiornata prima di tentare di leggere dati
   await ensureRistoranteColumns();
   const db = getDb();
   try {
+    // Esegue una query JOIN per recuperare i ristoranti associati al gestore
     const rows = db
       .prepare(
         `SELECT idRistorante, nome, indirizzo, telefono, email, penaleNoShow, messaggioPenale, pin, caparraRichiesta, tipologia, foto_url
          FROM Ristorante
          WHERE idGestoreRistorante = ?`
       )
-      .all(Number(sessionId)) as Ristorante[];
+      .all(Number(sessionId)) as Ristorante[]; // Converte il risultato nel tipo Ristorante[]
 
+    // Ritorna un oggetto di successo con la lista dei ristoranti
     return { success: true, data: rows };
   } catch (error: any) {
     console.error('getMyRistoranti error:', error.message);
@@ -104,16 +113,22 @@ export async function getMyRistoranti(): Promise<{ success: boolean; data?: Rist
     db.close();
   }
 }
-
+//Aggiunge un nuovo ristorante nel database.
+//Gestisce l'upload dell'immagine principale, validando il formato e salvandola nel percorso pubblico del server.
 export async function addRistorante(formData: FormData): Promise<{ success: boolean; error?: string }> {
+  // Recupera i cookie dal browser dell'utente per identificare la sessione corrente
   const cookieStore = await cookies();
-  const sessionId = cookieStore.get('seateasy_session')?.value;
+  // Preleva l'ID del gestore (sessione) dal cookie 'seateasy_session'
+  const sessionId = cookieStore.get('seateasy_session')?.value; 
 
+  // Se non c'è una sessione valida, impedisce l'accesso ai dati del ristorante
   if (!sessionId) {
     return { success: false, error: 'Non autenticato.' };
   }
-
+  
+  // Assicura che la tabella sia aggiornata prima di tentare di leggere dati
   await ensureRistoranteColumns();
+  // Estrae i dati dal form, eseguendo il trim che è una pulizia di spazi per i campi testuali
   const nome = (formData.get('nome') as string)?.trim();
   const indirizzo = (formData.get('indirizzo') as string)?.trim();
   const telefono = (formData.get('telefono') as string)?.trim() || null;
@@ -126,18 +141,26 @@ export async function addRistorante(formData: FormData): Promise<{ success: bool
   const caparraRichiesta = caparraRaw ? parseFloat(caparraRaw) : null;
   const tipologia = (formData.get('tipologia') as string)?.trim() || 'Italiano';
 
+  // Se non ci sono nome e indirizzo, ritorna un errore
   if (!nome || !indirizzo) {
     return { success: false, error: 'Nome e indirizzo sono obbligatori.' };
   }
 
+  // Crea una connessione al database
   const db = getDb();
   try {
+    // Inizializza l'URL della foto a null
     let foto_url = null;
+    // Ottiene il file dal form
     const file = formData.get('foto') as File;
     
+    // Se il file esiste e ha una dimensione maggiore di 0
     if (file && file.size > 0) {
+      // Definisce le estensioni valide per l'immagine
       const validExtensions = ['.png', '.jpg', '.jpeg'];
+      // Ottiene l'estensione del file e la converte in minuscolo
       const ext = path.extname(file.name).toLowerCase();
+      // Se l'estensione non è valida, ritorna un errore
       if (!validExtensions.includes(ext)) {
         return { success: false, error: 'Formato immagine non valido. Usa PNG o JPG.' };
       }

@@ -136,10 +136,44 @@ export default function TableMap({ //è un componente react che renderizza la ma
     setTimeout(() => setMinToast(null), 3500);
   };
 
+  // Algoritmo combinatorio: verifica se ESISTE almeno un sottoinsieme di tavoli nel gruppo
+  // che INCLUDA il tavolo corrente e che soddisfi SIA i posti massimi SIA i posti minimi richiesti.
+  const isTableUsable = (table: Tavolo, groupTables: Tavolo[], targetPax: number) => {
+    if (groupTables.length === 1) {
+      return table.posti >= targetPax && (table.postiMinimi ?? 1) <= targetPax;
+    }
+    const others = groupTables.filter(t => t.idTavolo !== table.idTavolo);
+    const numOthers = others.length;
+    // Genera tutte le combinazioni possibili con bitwise shift (2^n)
+    for (let i = 0; i < (1 << numOthers); i++) {
+      let sumPosti = table.posti;
+      let sumMin = table.postiMinimi ?? 1;
+      for (let j = 0; j < numOthers; j++) {
+        if ((i & (1 << j)) !== 0) {
+          sumPosti += others[j].posti;
+          sumMin += (others[j].postiMinimi ?? 1);
+        }
+      }
+      if (sumPosti >= targetPax && sumMin <= targetPax) {
+        return true; // Trovata almeno una combinazione valida
+      }
+    }
+    return false; // Il tavolo è del tutto inutile per questo numero di pax
+  };
+
   // 7. IL CUORE DELLA BUSINESS LOGIC LATO CLIENT (L'algoritmo di selezione)
   const handleTableClick = (tavolo: Tavolo) => {
     setTavoliError(null);
     if (tavolo.stato !== 'Libero') return; // Se è occupato, interrompe tutto.
+
+    // BLOCCO AL CLICK PER TAVOLI INUTILIZZABILI MATEMATICAMENTE
+    if (pax !== undefined) {
+      const groupTables = tavolo.idGruppo ? tavoli.filter(t => t.idGruppo === tavolo.idGruppo && t.stato === 'Libero') : [tavolo];
+      if (!isTableUsable(tavolo, groupTables, pax)) {
+        setTimeout(() => showMinToast("Questo tavolo non può soddisfare i requisiti minimi o massimi per il numero di persone selezionate."), 0);
+        return;
+      }
+    }
 
     // 7A. CONTROLLO OVERBOOKING (Il tavolo è troppo piccolo?)
     if (pax !== undefined) {
@@ -205,8 +239,42 @@ export default function TableMap({ //è un componente react che renderizza la ma
     });
   };
 
+  // Helper per inviare la prenotazione al server
+  const executeBooking = async (pagata: boolean) => {
+    setLoading(true);
+    try {
+      // 8B. CHIAMATA ALLA SERVER ACTION
+      const result = await createReservation({
+        idRistorante,
+        idTurno: selectedTurno,
+        dataPrenotazione: `${selectedDate} ${selectedTime}`,
+        numeroPersone: pax || totalPostiSelezione,
+        idTavoli: selectedTavoli.map(t => t.idTavolo),
+        noteCliente: specialRequests,
+        caparraPagata: pagata, // Salva il flag del pagamento
+      });
+      if (result.success) {
+        setMessage({ type: 'success', text: 'Prenotazione effettuata con successo!' });
+        // NON sblocchiamo il loading in caso di successo, così l'utente non può cliccare di nuovo
+        setTimeout(() => { router.push('/cliente/prenotazioni'); }, 2000);
+        return true;
+      } else {
+        setMessage({ type: 'error', text: result.error || 'Errore durante la prenotazione.' });
+        setLoading(false);
+        return false;
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Errore di connessione al server.' });
+      setLoading(false);
+      return false;
+    }
+  };
+
   // 8. LA FUNZIONE DI SUBMIT (Invio dati al server)
   const handleBooking = async () => {
+    if (loading || paymentLoading) return; // BLOCCO DOPPIO CLICK
+    
+    setLoading(true); // Blocca subito l'interfaccia
     setTurnoError(null);
     setTavoliError(null);
     setMessage(null);
@@ -232,47 +300,33 @@ export default function TableMap({ //è un componente react che renderizza la ma
       hasError = true;
     }
 
-    if (hasError) return;
+    if (hasError) {
+      setLoading(false); // Sblocca se ci sono errori
+      return;
+    }
 
     // 8A. GESTIONE CAPARRA (CRM)
     // Se c'è una caparra e non è stata pagata, blocca e apri il modale.
     if (caparraRichiesta > 0 && !paymentCompleted) {
+      setLoading(false); // Sblocca il pulsante principale
       setShowPaymentModal(true);
       return;
     }
 
-    setLoading(true);
-    try {
-      // 8B. CHIAMATA ALLA SERVER ACTION
-      const result = await createReservation({
-        idRistorante,
-        idTurno: selectedTurno,
-        dataPrenotazione: `${selectedDate} ${selectedTime}`,
-        numeroPersone: pax || totalPostiSelezione,
-        idTavoli: selectedTavoli.map(t => t.idTavolo),
-        noteCliente: specialRequests,
-        caparraPagata: paymentCompleted, // Salva il flag del pagamento
-      });
-      if (result.success) {
-        setMessage({ type: 'success', text: 'Prenotazione effettuata con successo!' });
-        setTimeout(() => { router.push('/cliente/prenotazioni'); }, 2000);
-      } else {
-        setMessage({ type: 'error', text: result.error || 'Errore durante la prenotazione.' });
-      }
-    } catch {
-      setMessage({ type: 'error', text: 'Errore di connessione al server.' });
-    } finally {
-      setLoading(false);
-    }
+    await executeBooking(paymentCompleted);
   };
 
   // Funzione simulata per il gateway di pagamento
   const simulatePayment = () => {
+    if (paymentLoading) return;
+    
     setPaymentLoading(true);
-    setTimeout(() => {
+    setTimeout(async () => {
       setPaymentLoading(false);
       setPaymentCompleted(true);
       setShowPaymentModal(false);
+      // Esegui in automatico la prenotazione post pagamento (Paga e Conferma in uno step)
+      await executeBooking(true);
     }, 2000);
   };
 
@@ -420,28 +474,53 @@ export default function TableMap({ //è un componente react che renderizza la ma
       {/* Disabilita il click sulla mappa se sta ancora caricando (opacity-50 pointer-events-none) */}
       <div id="mappa-tavoli" className={`bg-[#FFFDFB] border-2 border-dashed border-[#F5CBA7] rounded-2xl p-6 md:p-10 mb-6 transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
 
-        <div className="flex flex-wrap gap-6 justify-center">
-          {tavoli.map((tavolo) => {
+        <div className="flex flex-wrap gap-6 justify-center mt-3">
+          {(() => {
+            // Estrae tutti i gruppi univoci presenti attualmente in mappa
+            const uniqueGroups = Array.from(new Set(tavoli.map(t => t.idGruppo).filter(Boolean)));
+            
+            // Palette di colori ben distinti per differenziare i vari gruppi visivamente
+            const groupColors = [
+              'bg-blue-100 text-blue-700 border-blue-300',
+              'bg-purple-100 text-purple-700 border-purple-300',
+              'bg-pink-100 text-pink-700 border-pink-300',
+              'bg-teal-100 text-teal-800 border-teal-300',
+              'bg-indigo-100 text-indigo-700 border-indigo-300',
+              'bg-emerald-100 text-emerald-800 border-emerald-300',
+            ];
+
+            return tavoli.map((tavolo) => {
             // 17. CALCOLO DELLO STATO VISIVO DEL SINGOLO TAVOLO
             const isOccupato = tavolo.stato === 'Occupato' || tavolo.stato === 'Non Disponibile';
             const isLibero = tavolo.stato === 'Libero';
             const isSelected = selectedIds.has(tavolo.idTavolo);
 
-            // Verifiche per colorare di grigio i tavoli non idonei
-            const belowMinimum = isLibero && pax !== undefined && pax < (tavolo.postiMinimi ?? 1);
+            // Recupera tutto il gruppo a cui appartiene
             const groupTables = tavolo.idGruppo ? tavoli.filter(t => t.idGruppo === tavolo.idGruppo && t.stato === 'Libero') : [tavolo];
             const groupMax = groupTables.reduce((s, t) => s + t.posti, 0);
-            const tooSmall = isLibero && pax !== undefined && pax > groupMax;
+            
+            // Calcola dinamicamente se il tavolo ha un'effettiva utilità combinatoria per i pax richiesti
+            const isUsable = pax === undefined || isTableUsable(tavolo, groupTables, pax);
             const isBlockedByFulfillment = isFulfilled && isLibero && !isSelected;
+
+            // --- NUOVA FEATURE: TAVOLO CONSIGLIATO (IDEALE) ---
+            // Il tavolo (o gruppo) viene considerato "ideale" se i suoi posti combaciano ESATTAMENTE col numero di pax richiesto
+            const isRecommended = isLibero && pax !== undefined && !isSelected && isUsable && (tavolo.idGruppo ? groupMax === pax : tavolo.posti === pax);
+            
+            // Calcola a quale indice appartiene il gruppo per assegnargli un colore specifico
+            const groupIndex = tavolo.idGruppo ? uniqueGroups.indexOf(tavolo.idGruppo) : -1;
+            const groupColor = groupIndex >= 0 ? groupColors[groupIndex % groupColors.length] : '';
 
             // 18. ASSEGNAZIONE DINAMICA DELLE CLASSI CSS TRAMITE LOGICA
             let cls = '';
             if (isOccupato) {
               cls = 'bg-red-50 border-red-200 text-red-300 cursor-not-allowed'; // ROSSO
-            } else if (!isLibero || isBlockedByFulfillment || belowMinimum || tooSmall) {
-              cls = 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed opacity-60'; // GRIGIO INATTIVO
+            } else if (!isLibero || isBlockedByFulfillment || !isUsable) {
+              cls = 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed opacity-60'; // GRIGIO INATTIVO (Bloccato perché matematicamente inutilizzabile)
             } else if (isSelected) {
-              cls = 'bg-gradient-to-br from-[#D35400] to-[#781D2D] border-[#781D2D] text-white shadow-xl scale-110 ring-4 ring-[#F5CBA7] cursor-pointer'; // ARANCIONE/ROSSO SELEZIONATO
+              cls = 'bg-gradient-to-br from-[#D35400] to-[#781D2D] border-[#781D2D] text-white shadow-xl scale-110 ring-4 ring-[#F5CBA7] cursor-pointer z-10'; // ARANCIONE/ROSSO SELEZIONATO
+            } else if (isRecommended) {
+              cls = 'bg-green-50 border-green-500 text-[#781D2D] hover:shadow-lg hover:scale-105 cursor-pointer ring-2 ring-green-400 shadow-md z-10'; // CONSIGLIATO (Glow Verde)
             } else {
               cls = 'bg-white border-[#F5CBA7] text-[#781D2D] hover:border-[#D35400] hover:shadow-lg hover:scale-105 cursor-pointer'; // BIANCO LIBERO
             }
@@ -458,19 +537,27 @@ export default function TableMap({ //è un componente react che renderizza la ma
                 {/* 19. BADGE DINAMICI */}
                 {/* Se ha un posto minimo > 1, mostra la label */}
                 {isLibero && (tavolo.postiMinimi ?? 1) > 1 && !isSelected && (
-                  <span className={`block text-[9px] font-bold mt-0.5 ${belowMinimum ? 'text-red-400' : 'text-gray-400 opacity-70'}`}>
+                  <span className={`block text-[9px] font-bold mt-0.5 ${!isUsable ? 'text-red-400' : 'text-gray-400 opacity-70'}`}>
                     min {tavolo.postiMinimi}
                   </span>
                 )}
-                {/* Se fa parte di un gruppo, mostra l'icona della catena 🔗 */}
+                
+                {/* Badge Consigliato "Ideale" */}
+                {isRecommended && !isSelected && (
+                  <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-green-500 text-white text-[8.5px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full shadow-sm whitespace-nowrap">
+                    Ideale
+                  </span>
+                )}
+
+                {/* Se fa parte di un gruppo, mostra l'etichetta col colore e numero del gruppo */}
                 {tavolo.idGruppo && isLibero && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-orange-100 text-orange-600 text-[8px] font-black uppercase tracking-wide px-1.5 py-0.5 rounded-full border border-orange-200 whitespace-nowrap">
-                    🔗
+                  <span className={`absolute -top-3 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border shadow-sm whitespace-nowrap ${groupColor}`}>
+                    🔗 GRUPPO {groupIndex + 1}
                   </span>
                 )}
               </div>
             );
-          })}
+          })})()}
         </div>
       </div>
 
@@ -521,8 +608,8 @@ export default function TableMap({ //è un componente react che renderizza la ma
 
         <button
           onClick={handleBooking}
-          disabled={loading} // Disabilita il click doppio
-          className={`w-full py-5 rounded-[2rem] font-black text-xl shadow-xl transition-all transform active:scale-95 ${canBook && !loading
+          disabled={loading || message?.type === 'success'} // Disabilita in modo permanente se è un successo
+          className={`w-full py-5 rounded-[2rem] font-black text-xl shadow-xl transition-all transform active:scale-95 ${canBook && !loading && message?.type !== 'success'
             ? 'bg-gradient-to-r from-[#D35400] via-[#E74C3C] to-[#781D2D] text-white hover:shadow-2xl hover:-translate-y-1'
             : 'bg-gray-100 text-gray-400'}`}
         >

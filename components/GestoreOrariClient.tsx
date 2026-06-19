@@ -47,6 +47,38 @@ export default function GestoreOrariClient({ initialOrari, idRistorante }: Gesto
     setLoading(true);
     const durata = Number(orarioForm.durataMedia) || 90;
 
+    // Converte orario HH:MM in minuti per facilitare i confronti
+    const timeToMinutes = (time: string) => {
+      const [hours, minutes] = time.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+
+    const startMins = timeToMinutes(orarioForm.oraInizio);
+    const endMins = timeToMinutes(orarioForm.oraFine);
+
+    if (endMins <= startMins) {
+      alert("L'ora di fine deve essere successiva all'ora di inizio.");
+      setLoading(false);
+      return;
+    }
+
+    // Controllo sovrapposizioni con altri orari esistenti
+    const hasOverlap = orari.some(o => {
+      if (editOrarioId && o.idOrario === editOrarioId) return false; // Ignora se stesso in fase di modifica
+      
+      const oStartMins = timeToMinutes(o.oraInizio);
+      const oEndMins = timeToMinutes(o.oraFine);
+      
+      // Condizione di sovrapposizione: Inizio1 < Fine2 AND Fine1 > Inizio2
+      return startMins < oEndMins && endMins > oStartMins;
+    });
+
+    if (hasOverlap) {
+      alert("Non puoi creare fasce orarie che si sovrappongono a quelle esistenti.");
+      setLoading(false);
+      return;
+    }
+
     if (editOrarioId) {
       await updateOrario(editOrarioId, orarioForm.nome, orarioForm.oraInizio, orarioForm.oraFine, durata);
     } else {
