@@ -25,7 +25,7 @@ export default async function ProfiloPage() {
     redirect("/auth");
   }
 
-  // Se tutti i controlli di sicurezza vanno a buon fine, ritorna l'interfaccia grafica (JSX) della pagina
+  // Se tutti i controlli di sicurezza vanno a buon fine, ritorna l'interfaccia grafica (JSX) della paginaa
   return (
     <div className="min-h-screen bg-[#FFFDFB]">
       {/* Inserisce la Navbar passando lo stato di login attivo */}
