@@ -1,10 +1,5 @@
-// Specifica che questo è un Client Component. È obbligatorio in Next.js (App Router) se usiamo hook come useState o eventi del browser come onClick.
 'use client';
-
-// Importa la libreria React e l'hook useState per gestire lo stato locale del filtro delle categorie
 import React, { useState } from 'react';
-
-// Importa il componente di navigazione nativo di Next.js che permette transizioni veloci tra le pagine senza ricaricare il browser (SPA behavior)
 import Link from 'next/link';
 
 // Esporta la funzione del componente RestaurantList, accettando le props: un array di ristoranti (initialRestaurants), il numero di persone (pax) e la data.
@@ -19,12 +14,11 @@ export default function RestaurantList({ initialRestaurants, pax = 1, date }: { 
     ? initialRestaurants
     : initialRestaurants.filter(r => r.tipologia === filter);
 
-  // Array statico contenente le categorie di ristoranti disponibili nella nostra interfaccia per generare i pulsanti
+
   const categories = ['Tutti', 'Italiano', 'Giapponese', 'Francese'];
 
-  // Ritorna il layout del componente espresso in JSX
   return (
-    // Tag semantico per una sezione, definisce la larghezza massima e la spaziatura interna responsive (Tailwind CSS)
+
     <section id="ristoranti-list" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
 
       {/* Contenitore flessibile che organizza l'intestazione e i pulsanti dei filtri in colonna su mobile e in riga su schermi grandi */}
@@ -51,8 +45,8 @@ export default function RestaurantList({ initialRestaurants, pax = 1, date }: { 
               onClick={() => setFilter(cat)}
               // Applica classi Tailwind dinamiche. Se il filtro corrente è uguale alla categoria di questo bottone, usa lo sfondo bordeaux. Altrimenti usa uno sfondo chiaro.
               className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all border ${filter === cat
-                  ? 'bg-[#781D2D] text-white border-[#781D2D] shadow-md'
-                  : 'bg-[#FDF1E9] text-[#781D2D] border-[#F5CBA7]/50 hover:bg-[#F5CBA7]/20'
+                ? 'bg-[#781D2D] text-white border-[#781D2D] shadow-md'
+                : 'bg-[#FDF1E9] text-[#781D2D] border-[#F5CBA7]/50 hover:bg-[#F5CBA7]/20'
                 }`}
             >
               {/* Testo del pulsante (es. Tutti, Italiano...) */}
@@ -73,7 +67,6 @@ export default function RestaurantList({ initialRestaurants, pax = 1, date }: { 
               {/* Contenitore dell'immagine del ristorante con effetto overflow nascosto per gestire gli zoom */}
               <div className="relative h-64 overflow-hidden shrink-0">
                 <img
-                  // Visualizza la foto del ristorante salvata sul database, oppure un'immagine di fallback di Unsplash se il campo è vuoto
                   src={risto.foto_url || `https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80`}
                   alt={risto.nome}
                   // Se il ristorante è disponibile applica lo zoom al passaggio del mouse, altrimenti applica l'effetto in bianco e nero (grayscale)

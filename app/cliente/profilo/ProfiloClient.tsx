@@ -1,8 +1,8 @@
-"use client"; // Specifica che il componente viene renderizzato e idratato sul browser, abilitando hook e interattività
+"use client";
 
-import React, { useState } from "react"; // Importa React e lo hook useState per la gestione degli stati locali
-import { updateClientProfile, deleteClientAccount } from "@/app/actions/cliente"; // Importa le Server Actions per aggiornare o eliminare l'account nel DB
-import { useRouter } from "next/navigation"; // Importa lo hook di Next.js per gestire la navigazione e il refresh programmatico delle rotte
+import React, { useState } from "react";
+import { updateClientProfile, deleteClientAccount } from "@/app/actions/cliente";
+import { useRouter } from "next/navigation";
 
 // Dichiarazione dell'interfaccia TypeScript che definisce la struttura rigida dell'oggetto profilo cliente
 export interface Profile {
@@ -21,7 +21,7 @@ export default function ProfiloClient({ profile }: { profile: Profile }) {
   const [loading, setLoading] = useState(false); // Stato booleano per tracciare il caricamento durante le chiamate asincrone (mostra lo spinner)
   const [message, setMessage] = useState({ type: "", text: "" }); // Stato per gestire i banner di notifica di successo o errore
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false); // Stato booleano per controllare l'apertura/chiusura del pop-up di eliminazione account
-  const router = useRouter(); // Inizializza l'istanza del router di Next.js
+  const router = useRouter();
 
   // Stato oggetto che memorizza i dati temporanei digitati dall'utente all'interno del form, inizializzato con i dati attuali del profilo
   const [formData, setFormData] = useState({
@@ -43,15 +43,15 @@ export default function ProfiloClient({ profile }: { profile: Profile }) {
     setLoading(true); // Attiva lo stato di caricamento per disabilitare i pulsanti ed evitare click multipli
     setMessage({ type: "", text: "" }); // Resetta eventuali messaggi di errore o successo precedenti
 
-    const res = await updateClientProfile(formData); // Invia i dati aggregati alla Server Action che scrive sul database
+    const res = await updateClientProfile(formData);
     if (res.success) {
-      setMessage({ type: "success", text: "Profilo aggiornato con successo!" }); // Mostra il banner verde di successo
-      setIsEditing(false); // Chiude la modalità di modifica tornando alla visualizzazione testuale
-      router.refresh(); // Forza Next.js a rivalidare i Server Components per mostrare i dati aggiornati nella Navbar o altrove
+      setMessage({ type: "success", text: "Profilo aggiornato con successo!" });
+      setIsEditing(false);
+      router.refresh();
     } else {
-      setMessage({ type: "error", text: res.error || "Errore durante l'aggiornamento." }); // Mostra il banner rosso di errore
+      setMessage({ type: "error", text: res.error || "Errore durante l'aggiornamento." });
     }
-    setLoading(false); // Disattiva lo stato di caricamento al termine dell'operazione
+    setLoading(false);
   };
 
   // Funzione asincrona associata al pulsante finale del modal per cancellare definitivamente l'account
@@ -61,10 +61,10 @@ export default function ProfiloClient({ profile }: { profile: Profile }) {
     if (res.success) {
       router.push("/auth"); // Se ha successo, reindirizza l'utente alla schermata di login/registrazione
     } else {
-      setMessage({ type: "error", text: res.error || "Impossibile eliminare l'account." }); // Gestisce l'anomalia mostrando l'errore
+      setMessage({ type: "error", text: res.error || "Impossibile eliminare l'account." });
       setShowDeleteConfirm(false); // Chiude il modal di conferma per rimettere in primo piano la schermata
     }
-    setLoading(false); // Spegne lo stato di loading
+    setLoading(false);
   };
 
   return (
@@ -210,10 +210,10 @@ export default function ProfiloClient({ profile }: { profile: Profile }) {
                     // Disabilita il bottone visivamente se non siamo in modifica e questo elemento non è la scelta salvata
                     disabled={!isEditing && formData.metodoPagamentoPredefinito !== method.id}
                     className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${formData.metodoPagamentoPredefinito === method.id
-                        ? 'border-[#781D2D] bg-[#781D2D]/5 text-[#781D2D] shadow-inner'
-                        : isEditing
-                          ? 'border-[#F5CBA7]/30 bg-white text-gray-400 hover:border-[#F5CBA7]'
-                          : 'hidden' // Nasconde completamente i pulsanti non selezionati se la schermata è in modalità di sola lettura
+                      ? 'border-[#781D2D] bg-[#781D2D]/5 text-[#781D2D] shadow-inner'
+                      : isEditing
+                        ? 'border-[#F5CBA7]/30 bg-white text-gray-400 hover:border-[#F5CBA7]'
+                        : 'hidden' // Nasconde completamente i pulsanti non selezionati se la schermata è in modalità di sola lettura
                       }`}
                   >
                     <span className="text-2xl mb-2">{method.icon}</span>

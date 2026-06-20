@@ -1,28 +1,22 @@
-// Importa la libreria nativa per interagire con database SQLite in modo sincrono e ad alte prestazioni
-import Database from 'better-sqlite3';
-// Importa il modulo nativo di Node.js per gestire e risolvere i percorsi dei file nel sistema operativo
-import path from 'path';
 
-// Importa l'utility di Next.js per leggere i cookie di sessione lato server
+import Database from 'better-sqlite3';
+import path from 'path';
 import { cookies } from 'next/headers';
 import Navbar from '@/components/Navbar';
 import TableMap from '@/components/TableMap';
 import RestaurantGallery from '@/components/RestaurantGallery';
-// Importa funzioni server-side esterne per garantire l'esistenza delle tabelle e recuperare i dati del profilo cliente
 import { ensureGalleriaTable } from '@/app/actions/ristoranti';
 import { getClientProfile } from '@/app/actions/cliente';
 
 export const dynamic = 'force-dynamic';
 // Componente principale asincrono. Riceve nelle props due Promise: 'params' (ID nell'URL) e 'searchParams' (query string dell'URL)
 export default async function RistoranteDettaglio({ params, searchParams }: { params: Promise<{ id: string }>, searchParams: Promise<{ pax?: string; data?: string }> }) {
-  // Attende la risoluzione della Promise 'params' per estrarre l'ID del ristorante specifico
+
   const { id } = await params;
   const sParams = await searchParams;
   const pax = parseInt(sParams?.pax || '1', 10);
-  // Recupera la data dall'URL. Se non c'è, genera la stringa della data di oggi (YYYY-MM-DD)
   const data = sParams?.data || new Date().toISOString().split('T')[0];
 
-  // Recupera lo store dei cookie ed estrae lo stato di login controllando la presenza del cookie di sessione
   const cookieStore = await cookies();
   const isLoggedIn = cookieStore.has('seateasy_session');
   // Operatore ternario: se l'utente è loggato recupera il suo profilo dal database tramite l'azione, altrimenti imposta null
@@ -30,7 +24,7 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
 
   // Risolve il percorso assoluto del file del database partendo dalla cartella principale del progetto (process.cwd())
   const dbPath = path.resolve(process.cwd(), 'database.db');
-  // Apre una connessione attiva con il database SQLite usando il percorso appena calcolato
+
   const db = new Database(dbPath);
 
   // Esegue un'azione di controllo preventiva sul server per assicurarsi che la tabella delle immagini ("galleria") sia creata
