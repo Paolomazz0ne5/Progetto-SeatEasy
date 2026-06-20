@@ -48,7 +48,7 @@ export async function getAvailableTables(idRistorante: number, date: string, idT
 
     // 2. Get all tables for the restaurant
     const allTables = db.prepare(`
-      SELECT T.* 
+      SELECT T.*, S.nome as nomeSala
       FROM Tavolo T 
       JOIN Sala S ON T.idSala = S.idSala 
       WHERE S.idRistorante = ?
@@ -324,7 +324,6 @@ export async function deleteClientAccount() {
       for (const res of reservations) {
         db.prepare('DELETE FROM OccupazioneTavolo WHERE idPrenotazione = ?').run(res.idPrenotazione);
         db.prepare('DELETE FROM Pagamento WHERE idPrenotazione = ?').run(res.idPrenotazione);
-        db.prepare('DELETE FROM Notifica WHERE idPrenotazione = ?').run(res.idPrenotazione);
         db.prepare('DELETE FROM Prenotazione WHERE idPrenotazione = ?').run(res.idPrenotazione);
       }
 

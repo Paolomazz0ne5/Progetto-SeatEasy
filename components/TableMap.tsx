@@ -23,6 +23,7 @@ type Tavolo = {
   postiMinimi: number; // Novità anti-spreco!
   stato: string;
   idGruppo?: string | null;
+  nomeSala?: string;
 };
 
 type Turno = {
@@ -474,8 +475,11 @@ export default function TableMap({ //è un componente react che renderizza la ma
       {/* Disabilita il click sulla mappa se sta ancora caricando (opacity-50 pointer-events-none) */}
       <div id="mappa-tavoli" className={`bg-[#FFFDFB] border-2 border-dashed border-[#F5CBA7] rounded-2xl p-6 md:p-10 mb-6 transition-opacity duration-300 ${loading ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
 
-        <div className="flex flex-wrap gap-6 justify-center mt-3">
+        <div className="flex flex-col gap-6 mt-3 w-full">
           {(() => {
+            // Estrae tutte le sale univoche presenti attualmente in mappa
+            const sale = Array.from(new Set(tavoli.map(t => t.nomeSala || 'Sala Principale')));
+            
             // Estrae tutti i gruppi univoci presenti attualmente in mappa
             const uniqueGroups = Array.from(new Set(tavoli.map(t => t.idGruppo).filter(Boolean)));
             
@@ -489,75 +493,88 @@ export default function TableMap({ //è un componente react che renderizza la ma
               'bg-emerald-100 text-emerald-800 border-emerald-300',
             ];
 
-            return tavoli.map((tavolo) => {
-            // 17. CALCOLO DELLO STATO VISIVO DEL SINGOLO TAVOLO
-            const isOccupato = tavolo.stato === 'Occupato' || tavolo.stato === 'Non Disponibile';
-            const isLibero = tavolo.stato === 'Libero';
-            const isSelected = selectedIds.has(tavolo.idTavolo);
+            return sale.map(nomeSala => {
+              const tavoliSala = tavoli.filter(t => (t.nomeSala || 'Sala Principale') === nomeSala);
+              return (
+                <div key={nomeSala} className="w-full mb-6 last:mb-0">
+                  <h3 className="text-xl font-black text-[#781D2D] mb-4 text-center border-b-2 border-[#F5CBA7]/40 pb-2 inline-block relative left-1/2 -translate-x-1/2">
+                    {nomeSala}
+                  </h3>
+                  <div className="flex flex-wrap gap-6 justify-center">
+                    {tavoliSala.map((tavolo) => {
+                      // 17. CALCOLO DELLO STATO VISIVO DEL SINGOLO TAVOLO
+                      const isOccupato = tavolo.stato === 'Occupato' || tavolo.stato === 'Non Disponibile';
+                      const isLibero = tavolo.stato === 'Libero';
+                      const isSelected = selectedIds.has(tavolo.idTavolo);
 
-            // Recupera tutto il gruppo a cui appartiene
-            const groupTables = tavolo.idGruppo ? tavoli.filter(t => t.idGruppo === tavolo.idGruppo && t.stato === 'Libero') : [tavolo];
-            const groupMax = groupTables.reduce((s, t) => s + t.posti, 0);
-            
-            // Calcola dinamicamente se il tavolo ha un'effettiva utilità combinatoria per i pax richiesti
-            const isUsable = pax === undefined || isTableUsable(tavolo, groupTables, pax);
-            const isBlockedByFulfillment = isFulfilled && isLibero && !isSelected;
+                      // Recupera tutto il gruppo a cui appartiene
+                      const groupTables = tavolo.idGruppo ? tavoli.filter(t => t.idGruppo === tavolo.idGruppo && t.stato === 'Libero') : [tavolo];
+                      const groupMax = groupTables.reduce((s, t) => s + t.posti, 0);
+                      
+                      // Calcola dinamicamente se il tavolo ha un'effettiva utilità combinatoria per i pax richiesti
+                      const isUsable = pax === undefined || isTableUsable(tavolo, groupTables, pax);
+                      const isBlockedByFulfillment = isFulfilled && isLibero && !isSelected;
 
-            // --- NUOVA FEATURE: TAVOLO CONSIGLIATO (IDEALE) ---
-            // Il tavolo (o gruppo) viene considerato "ideale" se i suoi posti combaciano ESATTAMENTE col numero di pax richiesto
-            const isRecommended = isLibero && pax !== undefined && !isSelected && isUsable && (tavolo.idGruppo ? groupMax === pax : tavolo.posti === pax);
-            
-            // Calcola a quale indice appartiene il gruppo per assegnargli un colore specifico
-            const groupIndex = tavolo.idGruppo ? uniqueGroups.indexOf(tavolo.idGruppo) : -1;
-            const groupColor = groupIndex >= 0 ? groupColors[groupIndex % groupColors.length] : '';
+                      // --- NUOVA FEATURE: TAVOLO CONSIGLIATO (IDEALE) ---
+                      // Il tavolo (o gruppo) viene considerato "ideale" se i suoi posti combaciano ESATTAMENTE col numero di pax richiesto
+                      const isRecommended = isLibero && pax !== undefined && !isSelected && isUsable && (tavolo.idGruppo ? groupMax === pax : tavolo.posti === pax);
+                      
+                      // Calcola a quale indice appartiene il gruppo per assegnargli un colore specifico
+                      const groupIndex = tavolo.idGruppo ? uniqueGroups.indexOf(tavolo.idGruppo) : -1;
+                      const groupColor = groupIndex >= 0 ? groupColors[groupIndex % groupColors.length] : '';
 
-            // 18. ASSEGNAZIONE DINAMICA DELLE CLASSI CSS TRAMITE LOGICA
-            let cls = '';
-            if (isOccupato) {
-              cls = 'bg-red-50 border-red-200 text-red-300 cursor-not-allowed'; // ROSSO
-            } else if (!isLibero || isBlockedByFulfillment || !isUsable) {
-              cls = 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed opacity-60'; // GRIGIO INATTIVO (Bloccato perché matematicamente inutilizzabile)
-            } else if (isSelected) {
-              cls = 'bg-gradient-to-br from-[#D35400] to-[#781D2D] border-[#781D2D] text-white shadow-xl scale-110 ring-4 ring-[#F5CBA7] cursor-pointer z-10'; // ARANCIONE/ROSSO SELEZIONATO
-            } else if (isRecommended) {
-              cls = 'bg-green-50 border-green-500 text-[#781D2D] hover:shadow-lg hover:scale-105 cursor-pointer ring-2 ring-green-400 shadow-md z-10'; // CONSIGLIATO (Glow Verde)
-            } else {
-              cls = 'bg-white border-[#F5CBA7] text-[#781D2D] hover:border-[#D35400] hover:shadow-lg hover:scale-105 cursor-pointer'; // BIANCO LIBERO
-            }
+                      // 18. ASSEGNAZIONE DINAMICA DELLE CLASSI CSS TRAMITE LOGICA
+                      let cls = '';
+                      if (isOccupato) {
+                        cls = 'bg-red-50 border-red-200 text-red-300 cursor-not-allowed'; // ROSSO
+                      } else if (!isLibero || isBlockedByFulfillment || !isUsable) {
+                        cls = 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed opacity-60'; // GRIGIO INATTIVO (Bloccato perché matematicamente inutilizzabile)
+                      } else if (isSelected) {
+                        cls = 'bg-gradient-to-br from-[#D35400] to-[#781D2D] border-[#781D2D] text-white shadow-xl scale-110 ring-4 ring-[#F5CBA7] cursor-pointer z-10'; // ARANCIONE/ROSSO SELEZIONATO
+                      } else if (isRecommended) {
+                        cls = 'bg-green-50 border-green-500 text-[#781D2D] hover:shadow-lg hover:scale-105 cursor-pointer ring-2 ring-green-400 shadow-md z-10'; // CONSIGLIATO (Glow Verde)
+                      } else {
+                        cls = 'bg-white border-[#F5CBA7] text-[#781D2D] hover:border-[#D35400] hover:shadow-lg hover:scale-105 cursor-pointer'; // BIANCO LIBERO
+                      }
 
-            return (
-              <div
-                key={tavolo.idTavolo}
-                onClick={() => handleTableClick(tavolo)}
-                className={`relative flex flex-col items-center justify-center w-24 h-24 rounded-2xl border-2 transition-all duration-200 select-none ${cls}`}
-              >
-                <span className="block font-black text-xl">T{tavolo.numero}</span>
-                <span className="block text-[10px] uppercase font-bold opacity-75 mt-0.5">{tavolo.posti} posti</span>
+                      return (
+                        <div
+                          key={tavolo.idTavolo}
+                          onClick={() => handleTableClick(tavolo)}
+                          className={`relative flex flex-col items-center justify-center w-24 h-24 rounded-2xl border-2 transition-all duration-200 select-none ${cls}`}
+                        >
+                          <span className="block font-black text-xl">T{tavolo.numero}</span>
+                          <span className="block text-[10px] uppercase font-bold opacity-75 mt-0.5">{tavolo.posti} posti</span>
 
-                {/* 19. BADGE DINAMICI */}
-                {/* Se ha un posto minimo > 1, mostra la label */}
-                {isLibero && (tavolo.postiMinimi ?? 1) > 1 && !isSelected && (
-                  <span className={`block text-[9px] font-bold mt-0.5 ${!isUsable ? 'text-red-400' : 'text-gray-400 opacity-70'}`}>
-                    min {tavolo.postiMinimi}
-                  </span>
-                )}
-                
-                {/* Badge Consigliato "Ideale" */}
-                {isRecommended && !isSelected && (
-                  <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-green-500 text-white text-[8.5px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full shadow-sm whitespace-nowrap">
-                    Ideale
-                  </span>
-                )}
+                          {/* 19. BADGE DINAMICI */}
+                          {/* Se ha un posto minimo > 1, mostra la label */}
+                          {isLibero && (tavolo.postiMinimi ?? 1) > 1 && !isSelected && (
+                            <span className={`block text-[9px] font-bold mt-0.5 ${!isUsable ? 'text-red-400' : 'text-gray-400 opacity-70'}`}>
+                              min {tavolo.postiMinimi}
+                            </span>
+                          )}
+                          
+                          {/* Badge Consigliato "Ideale" */}
+                          {isRecommended && !isSelected && (
+                            <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-green-500 text-white text-[8.5px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full shadow-sm whitespace-nowrap">
+                              Ideale
+                            </span>
+                          )}
 
-                {/* Se fa parte di un gruppo, mostra l'etichetta col colore e numero del gruppo */}
-                {tavolo.idGruppo && isLibero && (
-                  <span className={`absolute -top-3 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border shadow-sm whitespace-nowrap ${groupColor}`}>
-                    🔗 GRUPPO {groupIndex + 1}
-                  </span>
-                )}
-              </div>
-            );
-          })})()}
+                          {/* Se fa parte di un gruppo, mostra l'etichetta col colore e numero del gruppo */}
+                          {tavolo.idGruppo && isLibero && (
+                            <span className={`absolute -top-3 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border shadow-sm whitespace-nowrap ${groupColor}`}>
+                              🔗 GRUPPO {groupIndex + 1}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            });
+          })()}
         </div>
       </div>
 

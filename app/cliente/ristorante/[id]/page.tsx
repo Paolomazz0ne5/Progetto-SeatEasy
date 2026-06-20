@@ -55,7 +55,7 @@ export default async function RistoranteDettaglio({ params, searchParams }: { pa
   `).all(id) as any[];
 
   // Esegue una query SQL con INNER JOIN per estrarre l'elenco dei tavoli mappati all'interno delle sale appartenenti a questo ristorante
-  const tavoliBase = db.prepare('SELECT T.* FROM Tavolo T JOIN Sala S ON T.idSala = S.idSala WHERE S.idRistorante = ?').all(id) as any[];
+  const tavoliBase = db.prepare('SELECT T.*, S.nome as nomeSala FROM Tavolo T JOIN Sala S ON T.idSala = S.idSala WHERE S.idRistorante = ?').all(id) as any[];
 
   // Recupera l'elenco delle recensioni dei clienti per questo ristorante ordinandole dalle più recenti (DESC) unendo i dati dell'account autore
   const recensioni = db.prepare(`

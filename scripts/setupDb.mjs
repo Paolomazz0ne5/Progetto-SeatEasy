@@ -133,18 +133,6 @@ db.exec(`
       FOREIGN KEY (idPrenotazione) REFERENCES Prenotazione(idPrenotazione) ON DELETE CASCADE
   );
 
-  CREATE TABLE IF NOT EXISTS Notifica (
-      idNotifica INTEGER PRIMARY KEY AUTOINCREMENT,
-      idPrenotazione INTEGER NOT NULL,
-      tipo TEXT,
-      messaggio TEXT,
-      destinatario TEXT,
-      canale TEXT,
-      dataInvio TEXT,
-      statoInvio TEXT,
-      FOREIGN KEY (idPrenotazione) REFERENCES Prenotazione(idPrenotazione) ON DELETE CASCADE
-  );
-
   CREATE TABLE IF NOT EXISTS GalleriaRistorante (
     idImmagine INTEGER PRIMARY KEY AUTOINCREMENT,
     idRistorante INTEGER NOT NULL,
