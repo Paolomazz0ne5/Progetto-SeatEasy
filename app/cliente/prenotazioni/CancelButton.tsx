@@ -1,7 +1,6 @@
-'use client'; // Abilita il componente all'uso dello stato locale, degli hook di React e delle interazioni nel browser
+'use client';
 
 import React, { useState } from 'react';
-// Importa la Server Action responsabile della modifica dello stato della prenotazione sul database
 import { cancelReservation } from '@/app/actions/cliente';
 // Importa le icone SVG da lucide-react per rendere l'interfaccia più parlante e accessibile
 import { Trash2, AlertTriangle, X } from 'lucide-react';
@@ -15,8 +14,8 @@ export default function CancelButton({
 }: {
   idPrenotazione: number,
   ristoranteNome: string,
-  politica?: string, // Proprietà opzionale stringa (politica di cancellazione)
-  caparra?: number   // Proprietà opzionale numerica (eventuale caparra versata)
+  politica?: string, // Proprietà opzionale 
+  caparra?: number   // Proprietà opzionale
 }) {
   // Stato booleano per controllare l'apertura (true) o la chiusura (false) del Pop-up di conferma
   const [showConfirm, setShowConfirm] = useState(false);
@@ -25,9 +24,8 @@ export default function CancelButton({
 
   // Funzione asincrona che lancia l'effettivo annullamento della prenotazione
   const handleCancel = async () => {
-    setLoading(true); // Attiva lo stato di caricamento (disabilita il pulsante ed evita doppi click)
+    setLoading(true);
 
-    // Invocazione della Server Action che esegue la query SQL di UPDATE sul file del database
     const result = await cancelReservation(idPrenotazione);
 
     if (result.success) {
@@ -35,7 +33,7 @@ export default function CancelButton({
     } else {
       alert(result.error); // In caso di errore (es. vincoli temporali saltati), mostra un alert con il motivo
     }
-    setLoading(false); // Ripristina lo stato di caricamento su false
+    setLoading(false);
   };
 
   return (

@@ -1,51 +1,39 @@
-// Importa la barra di navigazione superiore dell'applicazione
+
 import Navbar from '@/components/Navbar';
-// Importa l'azione lato server che recupera le prenotazioni dell'utente corrente dal database
 import { getMyReservations } from '@/app/actions/cliente';
-// Importa l'utility di Next.js per leggere i cookie di sessione salvati sul server
 import { cookies } from 'next/headers';
-// Importa il componente nativo di Next.js per gestire la navigazione tra le pagine in modo ottimizzato senza ricaricare il browser
 import Link from 'next/link';
-// Importa l'icona del calendario dalla libreria lucide-react per la grafica dello stato vuoto
 import { Calendar } from 'lucide-react';
-// Importa il Client Component interattivo che si occuperà di mostrare la lista delle prenotazioni e gestire i moduli di recensione
 import PrenotazioniClient from './PrenotazioniClient';
-// Importa il modulo di Node.js per mappare in modo corretto e sicuro i percorsi dei file sul sistema operativo
 import path from 'path';
-// Importa il driver sincrono ad alte prestazioni per interagire con il database SQLite locale
 import Database from 'better-sqlite3';
 
-// Funzione di utilità interna per inizializzare e configurare la connessione al database SQLite
+
 function getDb() {
   // Calcola il percorso assoluto del database a partire dalla cartella radice del progetto
   const dbPath = path.resolve(process.cwd(), 'database.db');
-  // Istanzia e ritorna l'oggetto di connessione attiva al file del database
   return new Database(dbPath);
 }
 
 // Funzione asincrona interna che esegue una query SQL per recuperare tutte le recensioni scritte da uno specifico cliente
 async function getUserReviews(idCliente: string) {
-  // Apre la connessione al database chiamando la funzione di utilità dichiarata sopra
   const db = getDb();
   try {
-    // Prepara ed esegue un prepared statement sicuro per estrarre le recensioni filtrando per l'ID dell'account cliente
     return db.prepare('SELECT * FROM Recensione WHERE idCliente = ?').all(idCliente) as any[];
   } finally {
-    // Il blocco 'finally' garantisce al 100% che la connessione al database venga chiusa, evitando Memory Leak anche in caso di errori SQL
     db.close();
   }
 }
 
 // Componente Server principale asincrono che rappresenta l'intera schermata delle prenotazioni personali
 export default async function MiePrenotazioni() {
-  // Recupera lo store asincrono dei cookie inviati dal client HTTP
+
   const cookieStore = await cookies();
-  // Estrae il valore testuale contenuto nel cookie di sessione (corrispondente all'ID account registrato a sistema)
   const idCliente = cookieStore.get('seateasy_session')?.value;
   // Converte la presenza del token in un valore booleano (true se loggato, false se anonimo) usando l'operatore di doppia negazione
   const isLoggedIn = !!idCliente;
 
-  // Chiama la Server Action esterna per recuperare tutte le prenotazioni associate all'utente autenticato
+
   const allPrenotazioni = await getMyReservations();
   // Operatore ternario: se l'ID cliente esiste esegue la query delle recensioni, altrimenti assegna un array vuoto di base
   const userReviews = idCliente ? await getUserReviews(idCliente) : [];
