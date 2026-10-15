@@ -46,12 +46,12 @@ export async function loginAction(formData: FormData) {
     if (role === 'gestore') {
       const gestore = db.prepare('SELECT idAccount FROM GestoreRistorante WHERE idAccount = ?').get(user.idAccount);
       if (!gestore) {
-        return { success: false, error: 'Questo account non ha i permessi di Area Gestore.' };
+        return { success: false, error: 'Credenziali non valide' };
       }
     } else {
       const cliente = db.prepare('SELECT idAccount FROM Cliente WHERE idAccount = ?').get(user.idAccount);
       if (!cliente) {
-        return { success: false, error: 'Questo account non è registrato come Cliente.' };
+        return { success: false, error: 'Credenziali non valide' };
       }
     }
 
